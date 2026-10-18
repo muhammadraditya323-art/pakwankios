@@ -189,17 +189,18 @@
   function deletePhoto(name){
     return api('/storage/v1/object/foto/' + encodeURIComponent(name), {method:'DELETE'}).catch(function(){});
   }
-  function compress(file){
+  function compress(file, opts){
+    opts = opts || {};
     return new Promise(function(resolve, reject){
       var fr = new FileReader();
       fr.onload = function(){
         var img = new Image();
         img.onload = function(){
-          var max = 800, w = img.width, h = img.height;
+          var max = opts.max || 800, w = img.width, h = img.height;
           if(w > h && w > max){ h = Math.round(h*max/w); w = max; } else if(h >= w && h > max){ w = Math.round(w*max/h); h = max; }
           var c = document.createElement('canvas'); c.width = w; c.height = h;
           var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0,0,w,h); x.drawImage(img,0,0,w,h);
-          c.toBlob(function(b){ b ? resolve(b) : reject(new Error('Foto gagal diproses')); }, 'image/jpeg', 0.72);
+          c.toBlob(function(b){ b ? resolve(b) : reject(new Error('Foto gagal diproses')); }, opts.type || 'image/jpeg', opts.type === 'image/png' ? undefined : 0.72);
         };
         img.onerror = function(){ reject(new Error('Foto tidak bisa dibaca')); };
         img.src = fr.result;
@@ -249,6 +250,7 @@
           '<button class="big primary" id="b-scan">📷 Scan Barcode</button>' +
           '<button class="big" id="b-add">+ Barang Baru</button>' +
           '<button class="big" id="b-bulk">💲 Harga Massal</button>' +
+          '<button class="big" id="b-qris" style="grid-column:1/-1">🧾 QRIS Pembayaran</button>' +
         '</section>' +
         '<input class="search" id="q" type="search" placeholder="Cari nama atau barcode" value="' + esc(query) + '">' +
         '<nav class="chips" id="chips">' + cats.map(function(c){ return '<button class="chip' + (c===filterCat?' active':'') + '" data-cat="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</nav>' +
@@ -258,6 +260,7 @@
     document.getElementById('b-scan').onclick = function(){ openScanner(handleCode); };
     document.getElementById('b-add').onclick = function(){ openEdit(null, {}); };
     document.getElementById('b-bulk').onclick = openBulk;
+    document.getElementById('b-qris').onclick = openQris;
     document.getElementById('q').addEventListener('input', function(e){ query = e.target.value; renderList(); });
     document.getElementById('chips').onclick = function(e){
       var b = e.target.closest('.chip'); if(!b) return;
@@ -344,10 +347,57 @@
     input.addEventListener('keydown', function(e){ if(e.key === 'Enter') save(); });
   }
 
+  /* ====== BANTUAN HARGA, PENCARIAN PRODUK, QRIS ====== */
+  function roundPrice(n){ var step = n < 5000 ? 100 : 500; return Math.max(0, Math.round(n / step) * step); }
+  function priceFromCost(cost, margin){ return roundPrice(cost * (1 + margin / 100)); }
+  function getMargin(){ try{ var v = parseFloat(localStorage.getItem('kiosPakWan.margin')); return isNaN(v) ? 10 : v; }catch(e){ return 10; } }
+  function setMargin(v){ try{ localStorage.setItem('kiosPakWan.margin', String(v)); }catch(e){} }
+
+  // Cari data produk dari barcode di Open Food Facts (gratis). Hanya untuk makanan/minuman kemasan; sering tidak ketemu.
+  function lookupProduct(code){
+    return fetch('https://world.openfoodfacts.org/api/v2/product/' + encodeURIComponent(code) + '.json?fields=product_name,brands,quantity,image_front_url')
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){ return (j && j.status === 1 && j.product && (j.product.product_name || j.product.brands)) ? j.product : null; })
+      .catch(function(){ return null; });
+  }
+
+  function openQris(){
+    var url = photoUrl('qris.png') + '?t=' + Date.now();
+    var ov = openSheet(
+      '<h2>QRIS pembayaran</h2>' +
+      '<p class="sub-note">Gambar ini tampil ke pelanggan saat memilih bayar QRIS. Pakai gambar QRIS toko Anda yang asli.</p>' +
+      '<div class="photo-prev" id="q-prev" style="width:100%;height:220px;margin-bottom:12px">Memeriksa…</div>' +
+      '<div class="photo-btns" style="margin-bottom:12px">' +
+        '<label class="btn filebtn" style="margin:0">📷 Foto atau pilih gambar QRIS<input id="q-file" type="file" accept="image/*"></label>' +
+      '</div>' +
+      '<div class="actions-row"><button class="btn danger" id="q-del" style="display:none">Hapus QRIS</button><button class="btn ghost" id="q-close">Tutup</button></div>');
+    var img = new Image();
+    img.onload = function(){ ov.querySelector('#q-prev').innerHTML = '<img src="' + url + '" alt="QRIS" style="object-fit:contain">'; ov.querySelector('#q-del').style.display = ''; };
+    img.onerror = function(){ ov.querySelector('#q-prev').textContent = 'Belum ada QRIS'; };
+    img.src = url;
+    ov.querySelector('#q-close').onclick = ov.close;
+    ov.querySelector('#q-file').addEventListener('change', function(e){
+      var f = e.target.files && e.target.files[0]; if(!f) return;
+      var prev = ov.querySelector('#q-prev'); prev.textContent = 'Mengunggah…';
+      compress(f, {max:900, type:'image/png'}).then(function(b){
+        return api('/storage/v1/object/foto/qris.png', {method:'POST', headers:{'Content-Type':'image/png','x-upsert':'true','cache-control':'max-age=60'}, body:b}).then(function(){
+          prev.innerHTML = '<img src="' + URL.createObjectURL(b) + '" alt="QRIS" style="object-fit:contain">';
+          ov.querySelector('#q-del').style.display = '';
+          toast('QRIS tersimpan (tampil ke pelanggan dalam beberapa menit)');
+        });
+      }).catch(function(ex){ prev.textContent = 'Gagal'; toast(errMsg(ex), true); });
+    });
+    ov.querySelector('#q-del').onclick = function(){
+      if(!confirm('Hapus gambar QRIS?')) return;
+      api('/storage/v1/object/foto/qris.png', {method:'DELETE'}).then(function(){ ov.querySelector('#q-prev').textContent = 'Belum ada QRIS'; ov.querySelector('#q-del').style.display = 'none'; toast('QRIS dihapus'); })
+        .catch(function(ex){ toast(errMsg(ex), true); });
+    };
+  }
+
   /* ---- Tambah / ubah barang ---- */
   function openEdit(existing, preset){
     var isEdit = !!existing;
-    var p = existing || {name:'', price:'', category:BASE_CATS[0], description:'', photo:null, barcode:preset.barcode || '', is_new:true, is_best:false, sold_out:false};
+    var p = existing || {name:'', price:'', category:(BASE_CATS.indexOf('Lainnya')>-1?'Lainnya':BASE_CATS[0]), description:'', photo:null, barcode:preset.barcode || '', is_new:true, is_best:false, sold_out:false, cost:null, margin_pct:null};
     var pendingBlob = null, removedOld = false;
     var cats = categories();
     var ov = openSheet(
@@ -360,7 +410,13 @@
       '<label>Nama barang<input id="e-name" value="' + esc(p.name) + '" placeholder="Contoh: Indomie Goreng"></label>' +
       '<div class="inline"><label>Barcode<input id="e-bar" inputmode="numeric" value="' + esc(p.barcode || '') + '" placeholder="Scan atau ketik"></label>' +
         '<button class="btn" id="e-scan" type="button">📷 Scan</button></div>' +
-      '<label style="margin-top:12px">Harga (Rp)<input id="e-price" type="number" inputmode="numeric" min="0" value="' + (p.price === '' ? '' : p.price) + '" placeholder="3500"></label>' +
+      '<button class="btn ghost" id="e-lookup" type="button" style="width:100%;margin:8px 0 2px">🔎 Isi otomatis dari barcode</button>' +
+      '<div class="sub-note" id="e-lookup-msg" style="min-height:1.1em"></div>' +
+      '<div class="inline" style="margin-top:6px"><label>Harga modal (Rp)<input id="e-cost" type="number" inputmode="numeric" min="0" value="' + (p.cost == null ? '' : p.cost) + '" placeholder="kulakan"></label>' +
+        '<label>Untung (%)<input id="e-margin" type="number" inputmode="decimal" min="0" value="' + (p.margin_pct == null ? getMargin() : p.margin_pct) + '"></label></div>' +
+      '<button class="btn ghost" id="e-calc" type="button" style="width:100%;margin:8px 0 12px">🧮 Hitung harga jual dari modal</button>' +
+      '<label>Harga jual (Rp)<input id="e-price" type="number" inputmode="numeric" min="0" value="' + (p.price === '' ? '' : p.price) + '" placeholder="3500"></label>' +
+      '<div class="sub-note" id="e-profit" style="margin:-6px 0 10px"></div>' +
       '<label>Kategori<select id="e-cat">' + cats.map(function(c){ return '<option' + (c===p.category?' selected':'') + '>' + esc(c) + '</option>'; }).join('') + '</select></label>' +
       '<label>Keterangan (opsional)<textarea id="e-desc" placeholder="Ukuran, varian, dll">' + esc(p.description || '') + '</textarea></label>' +
       '<label class="check"><input id="e-new" type="checkbox"' + (p.is_new?' checked':'') + '> 🆕 Stok baru</label>' +
@@ -379,8 +435,43 @@
     ov.querySelector('#e-cam').addEventListener('change', onPhoto);
     ov.querySelector('#e-gal').addEventListener('change', onPhoto);
     ov.querySelector('#e-scan').onclick = function(){
-      openScanner(function(code){ ov.querySelector('#e-bar').value = code; toast('Barcode: ' + code); });
+      openScanner(function(code){ ov.querySelector('#e-bar').value = code; toast('Barcode: ' + code); doLookup(); });
     };
+    function refreshProfit(){
+      var c = parseInt(ov.querySelector('#e-cost').value, 10), pr = parseInt(ov.querySelector('#e-price').value, 10), el = ov.querySelector('#e-profit');
+      if(isNaN(c) || isNaN(pr) || c <= 0){ el.textContent = ''; return; }
+      el.textContent = 'Untung per barang: ' + rp(pr - c) + ' (' + Math.round((pr - c) / c * 100) + '%)';
+    }
+    ['#e-cost','#e-price','#e-margin'].forEach(function(sel){ ov.querySelector(sel).addEventListener('input', refreshProfit); });
+    ov.querySelector('#e-calc').onclick = function(){
+      var c = parseInt(ov.querySelector('#e-cost').value, 10), m = parseFloat(ov.querySelector('#e-margin').value);
+      if(isNaN(c) || c <= 0){ toast('Isi harga modal dulu.', true); return; }
+      if(isNaN(m) || m < 0) m = 0;
+      ov.querySelector('#e-price').value = priceFromCost(c, m);
+      refreshProfit();
+    };
+    function doLookup(){
+      var code = ov.querySelector('#e-bar').value.trim(), msg = ov.querySelector('#e-lookup-msg');
+      if(!code){ msg.textContent = 'Isi atau scan barcode dulu.'; return; }
+      msg.textContent = 'Mencari data produk…';
+      lookupProduct(code).then(function(prod){
+        if(!prod){ msg.textContent = 'Tidak ditemukan di database produk. Isi manual saja.'; return; }
+        var brand = (prod.brands || '').split(',')[0].trim(), nm = (prod.product_name || '').trim();
+        var full = (brand && nm.toLowerCase().indexOf(brand.toLowerCase()) === -1) ? (brand + ' ' + nm).trim() : (nm || brand);
+        var nameEl = ov.querySelector('#e-name'), descEl = ov.querySelector('#e-desc');
+        if(!nameEl.value.trim()) nameEl.value = full;
+        if(!descEl.value.trim() && prod.quantity) descEl.value = prod.quantity;
+        msg.textContent = 'Ditemukan: ' + full + '. Cek dulu sebelum menyimpan.';
+        if(prod.image_front_url && !pendingBlob){
+          fetch(prod.image_front_url).then(function(r){ if(!r.ok) throw new Error('x'); return r.blob(); }).then(compress).then(function(b){
+            pendingBlob = b; ov.querySelector('#e-prev').innerHTML = '<img src="' + URL.createObjectURL(b) + '" alt="">';
+            msg.textContent += ' Foto diambil otomatis.';
+          }).catch(function(){ msg.textContent += ' Foto tidak bisa diambil otomatis, silakan foto sendiri.'; });
+        }
+      });
+    }
+    ov.querySelector('#e-lookup').onclick = doLookup;
+    refreshProfit();
     ov.querySelector('#e-cancel').onclick = ov.close;
     if(isEdit){
       ov.querySelector('#e-del').onclick = function(){
@@ -400,9 +491,12 @@
       var barcode = ov.querySelector('#e-bar').value.trim() || null;
       var data = {
         name:name, price:price, barcode:barcode,
+        cost: (function(){ var c = parseInt(ov.querySelector('#e-cost').value, 10); return isNaN(c) ? null : c; })(),
+        margin_pct: (function(){ var m = parseFloat(ov.querySelector('#e-margin').value); return isNaN(m) ? null : m; })(),
         category:ov.querySelector('#e-cat').value, description:ov.querySelector('#e-desc').value.trim(),
         is_new:ov.querySelector('#e-new').checked, is_best:ov.querySelector('#e-best').checked, sold_out:ov.querySelector('#e-sold').checked
       };
+      if(data.margin_pct != null) setMargin(data.margin_pct);
       var btn = ov.querySelector('#e-save'); btn.disabled = true; btn.textContent = 'Menyimpan…';
       var oldPhoto = p.photo;
       var step = Promise.resolve();
@@ -421,6 +515,7 @@
           btn.disabled = false; btn.textContent = 'Simpan'; toast(errMsg(ex), true);
         });
     };
+    if(preset.barcode && !isEdit){ setTimeout(doLookup, 80); }
     if(preset.focusPrice){ setTimeout(function(){ var i = ov.querySelector('#e-price'); i.focus(); i.select(); }, 60); }
   }
 
@@ -428,11 +523,11 @@
   function openBulk(){
     var cats = ['Semua'].concat(categories());
     var ov = openSheet(
-      '<h2>Atur harga massal</h2><p class="sub-note">Cocokkan harga dengan harga pasar sekaligus. Lihat pratinjau dulu sebelum menyimpan.</p>' +
+      '<h2>Atur harga massal</h2><p class="sub-note">Cocokkan harga dengan harga pasar sekaligus. Pilih "Dari harga modal" untuk menghitung ulang harga jual dari modal terbaru (memakai untung % tiap barang; kalau kosong, memakai angka di kolom Jumlah). Lihat pratinjau dulu sebelum menyimpan.</p>' +
       '<label>Barang yang diubah<select id="bk-cat">' + cats.map(function(c){ return '<option>' + esc(c) + '</option>'; }).join('') + '</select></label>' +
       '<div class="inline"><label>Perubahan<select id="bk-dir"><option value="1">Naik</option><option value="-1">Turun</option></select></label>' +
         '<label>Jumlah<input id="bk-val" type="number" inputmode="decimal" min="0" value="5"></label>' +
-        '<label>Satuan<select id="bk-unit"><option value="pct">%</option><option value="rp">Rp</option></select></label></div>' +
+        '<label>Satuan<select id="bk-unit"><option value="pct">%</option><option value="rp">Rp</option><option value="modal">Dari harga modal + untung %</option></select></label></div>' +
       '<label style="margin-top:12px">Bulatkan ke<select id="bk-round"><option value="1">Tidak dibulatkan</option><option value="100">Rp 100 terdekat</option><option value="500" selected>Rp 500 terdekat</option><option value="1000">Rp 1.000 terdekat</option></select></label>' +
       '<div id="bk-prev"></div>' +
       '<div class="actions-row"><button class="btn ghost" id="bk-cancel">Batal</button><button class="btn" id="bk-apply">Terapkan</button></div>');
@@ -444,8 +539,10 @@
       changes = [];
       products.forEach(function(p){
         if(cat !== 'Semua' && p.category !== cat) return;
-        var np = unit === 'pct' ? p.price * (1 + dir*val/100) : p.price + dir*val;
-        np = Math.max(0, Math.round(Math.round(np/step)*step));
+        if(unit === 'modal' && !(p.cost > 0)) return; // butuh harga modal
+        var np = unit === 'modal' ? p.cost * (1 + (p.margin_pct != null ? p.margin_pct : val) / 100)
+               : unit === 'pct' ? p.price * (1 + dir*val/100) : p.price + dir*val;
+        np = Math.max(0, unit === 'modal' ? Math.ceil(np/step - 1e-9)*step : Math.round(np/step)*step);
         if(np !== p.price) changes.push({p:p, from:p.price, to:np});
       });
       var box = ov.querySelector('#bk-prev');
