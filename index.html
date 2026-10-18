@@ -184,6 +184,11 @@
   .sheet .code-label input{ display:block; width:100%; margin-top:5px; padding:11px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink); font:400 1rem 'Public Sans',sans-serif; letter-spacing:0.15em; }
   .code-err{ color:var(--red); font-size:0.82rem; min-height:1.1em; margin-bottom:6px; }
   .wa-open{ flex:1; display:block; text-align:center; background:var(--green); color:var(--gold-soft); text-decoration:none; border-radius:10px; padding:12px; font:700 0.92rem 'Public Sans',sans-serif; }
+  .noorder-note{ font-size:0.68rem; opacity:0.6; text-align:center; padding:0 6px 8px; }
+  .rokok-flag{ font-size:0.68rem; opacity:0.7; color:var(--red); }
+  .pay-title{ font:600 0.85rem 'Public Sans',sans-serif; margin:10px 0 6px; }
+  .qris-box{ text-align:center; margin:10px 0; }
+  .qris-box img{ max-width:240px; width:100%; margin:8px auto 0; border-radius:10px; background:#fff; padding:6px; }
 </style>
 </head>
 <body>
@@ -233,11 +238,11 @@
     // buang barang di keranjang yang sudah tidak ada / habis
     Object.keys(cart).forEach(function(id){
       var p = list.find(function(x){ return x.id === id; });
-      if(!p || p.soldOut || p.noOrder) delete cart[id];
+      if(!p || p.soldOut) delete cart[id];
     });
   }
   function loadProducts(){
-    var url = SUPABASE_URL + '/rest/v1/products?select=*&order=id.asc';
+    var url = SUPABASE_URL + '/rest/v1/products?select=id,name,price,category,description,photo,is_new,is_best,sold_out,barcode&order=id.asc';
     return fetch(url, {headers: {apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY}})
       .then(function(res){ if(!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
       .then(function(rows){
@@ -254,7 +259,7 @@
       });
   }
   function checkQris(){
-    var u = photoUrl('qris.png');
+    var u = photoUrl('qris.png') + '?v=' + Math.floor(Date.now() / 600000);
     return fetch(u, {method:'HEAD'}).then(function(r){ if(r.ok) STATE.qris = u; }).catch(function(){});
   }
 
@@ -271,8 +276,12 @@
   function setQty(id, qty){
     qty = Math.max(0, Math.min(999, parseInt(qty,10) || 0));
     var p = STATE.products.find(function(x){ return x.id === id; });
-    if(!p || p.soldOut || p.noOrder) qty = 0;
+    if(!p || p.soldOut) qty = 0;
     if(qty <= 0) delete cart[id]; else cart[id] = qty;
+  }
+  function cartHasRokok(){
+    for(var id in cart){ var p = STATE.products.find(function(x){ return x.id === id; }); if(p && p.noOrder) return true; }
+    return false;
   }
   function kembaliText(){
     var bayar = parseInt(bayarState || '0', 10) || 0;
@@ -338,15 +347,15 @@
     var badges = (p.isNew ? '<span class="new-badge">🆕 Baru</span>' : '') +
                  (p.best ? '<span class="best-badge">🔥 Terlaris</span>' : '');
     var action;
-    if(p.noOrder) action = '<div class="qty-row"><span class="soldout-note">Info harga · beli langsung di kios</span></div>';
-    else if(p.soldOut) action = '<div class="qty-row"><span class="soldout-note">Stok habis</span></div>';
+    if(p.soldOut) action = '<div class="qty-row"><span class="soldout-note">Stok habis</span></div>';
     else if(qty > 0) action =
       '<div class="qty-row">' +
         '<button class="qty-btn" data-action="qty-minus" data-id="'+p.id+'" aria-label="Kurangi">−</button>' +
         '<span class="qty-num">'+qty+'</span>' +
         '<button class="qty-btn" data-action="qty-plus" data-id="'+p.id+'" aria-label="Tambah">+</button>' +
       '</div>';
-    else action = '<div class="qty-row"><button class="buy-btn" data-action="buy" data-id="'+p.id+'">🛒 Beli</button></div>';
+    else action = '<div class="qty-row"><button class="buy-btn" data-action="buy" data-id="'+p.id+'">' + (p.noOrder ? '＋ Hitung' : '🛒 Beli') + '</button></div>';
+    if(p.noOrder && !p.soldOut) action += '<div class="noorder-note">Hanya untuk hitungan · tidak ikut pesanan</div>';
     return '<article class="card'+(p.soldOut?' soldout':'')+'">' +
       '<div class="thumb">' +
         (p.photo ? '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name)+'" loading="lazy">' : placeholderIcon()) +
@@ -465,11 +474,11 @@
     if(STATE.qris) html += '<button class="fab fab-qris" id="btn-qris">Lihat QRIS</button>';
     html += '</div>';
 
-    html += '<footer class="foot"><p>Halaman info barang '+escapeHtml(STATE.shopName)+' — bukan toko belanja online. Daftar belanja hanya untuk membantu menghitung; pembelian dan pembayaran dilakukan langsung di kios. Rokok hanya ditampilkan sebagai info harga.</p></footer>';
+    html += '<footer class="foot"><p>Halaman info barang '+escapeHtml(STATE.shopName)+' — bukan toko belanja online. Pesanan lewat WhatsApp memerlukan kode persetujuan dari kios. Rokok hanya untuk hitungan dan tidak bisa dipesan lewat situs; beli langsung di kios.</p></footer>';
 
     if(cartCount() > 0){
       html += '<div class="cart-bar"><div class="cart-bar-row">' +
-        '<div class="cart-info">' + cartCount() + ' barang<br><span class="cart-total">'+formatRupiah(cartTotal())+'</span></div>' +
+        '<div class="cart-info">' + cartCount() + ' barang<br><span class="cart-total">'+formatRupiah(cartTotal())+'</span>' + (cartHasRokok() ? '<br><small class="rokok-flag">termasuk rokok (tidak ikut pesanan)</small>' : '') + '</div>' +
         '<input type="number" min="0" inputmode="numeric" id="cart-bayar" placeholder="Uang dibayar" value="'+escapeHtml(bayarState)+'">' +
         '<button class="clear-btn" id="btn-clear" aria-label="Kosongkan keranjang">Kosongkan</button>' +
         '<button class="pesan-btn" id="btn-pesan">Pesan</button>' +
@@ -563,26 +572,34 @@
   }
 
   function openOrderModal(bayar){
-    var items = [], total = 0;
+    var items = [], total = 0, rokokTotal = 0, rokokCount = 0;
     for(var id in cart){
       var p = STATE.products.find(function(x){ return x.id === id; });
       if(!p) continue;
       var sub = (p.price||0) * cart[id];
+      if(p.noOrder){ rokokTotal += sub; rokokCount += cart[id]; continue; }
       total += sub;
       items.push({name:p.name, qty:cart[id], price:p.price, sub:sub});
     }
-    if(!items.length) return;
+    if(!items.length){
+      alert('Daftar belanja hanya berisi rokok. Rokok tidak bisa dipesan lewat situs; hitung dan beli langsung di kios.');
+      return;
+    }
     var code = generateOrderCode();
     var rowsHtml = items.map(function(it){
       return '<div class="calc-row"><span class="calc-name">'+escapeHtml(it.name)+' x'+it.qty+'</span><span class="calc-price">'+formatRupiah(it.sub)+'</span></div>';
     }).join('');
+    var rokokNote = rokokCount ? '<p class="hint">🧮 Rokok ('+rokokCount+' barang, '+formatRupiah(rokokTotal)+') tidak ikut pesanan. Dihitung dan dibeli langsung di kios.</p>' : '';
 
-    var waLines = [];
-    waLines.push('Pesan dari ' + STATE.shopName + ' (kode: ' + code + ')');
-    items.forEach(function(it){ waLines.push('- ' + it.name + ' x' + it.qty + ' = ' + formatRupiah(it.sub)); });
-    waLines.push('Total: ' + formatRupiah(total));
-    if(bayar > 0){ waLines.push('Bayar tunai: ' + formatRupiah(bayar) + ' (kembalian ' + formatRupiah(Math.max(0,bayar-total)) + ')'); }
-    var waText = encodeURIComponent(waLines.join('\n'));
+    function waTextFor(pay){
+      var lines = [];
+      lines.push('Pesan dari ' + STATE.shopName + ' (kode: ' + code + ')');
+      items.forEach(function(it){ lines.push('- ' + it.name + ' x' + it.qty + ' = ' + formatRupiah(it.sub)); });
+      lines.push('Total: ' + formatRupiah(total));
+      lines.push('Pembayaran: ' + (pay === 'qris' ? 'QRIS (bukti bayar menyusul)' : 'Tunai di kios'));
+      if(pay !== 'qris' && bayar > 0){ lines.push('Uang tunai disiapkan: ' + formatRupiah(bayar)); }
+      return encodeURIComponent(lines.join('\n'));
+    }
 
     var overlay = document.createElement('div');
     overlay.className = 'overlay';
@@ -590,20 +607,20 @@
       '<div class="sheet">' +
         '<h2>Kode Pesanan: ' + code + '</h2>' +
         '<div>' + rowsHtml + '</div>' +
-        '<div class="calc-summary"><div class="calc-line calc-total"><span>Total</span><span>'+formatRupiah(total)+'</span></div></div>' +
-        '<p class="hint">Untuk mengirim pesanan, masukkan <b>kode persetujuan dari admin</b> (minta ke pemilik kios). Setelah itu kirim kode pesanan lewat WhatsApp, lalu bayar tunai di tempat'+(STATE.qris?' atau lewat QRIS':'')+'.</p>' +
+        '<div class="calc-summary"><div class="calc-line calc-total"><span>Total pesanan</span><span>'+formatRupiah(total)+'</span></div></div>' +
+        rokokNote +
+        '<div class="pay-title">Pembayaran</div>' +
+        '<label class="check"><input type="radio" name="pay" value="tunai" checked> Tunai di kios</label>' +
+        (STATE.qris ? '<label class="check"><input type="radio" name="pay" value="qris"> QRIS</label>' : '') +
+        '<p class="hint">Untuk mengirim pesanan, masukkan <b>kode persetujuan dari admin</b> (minta ke pemilik kios).</p>' +
         '<label class="code-label">Kode persetujuan admin<input id="order-code" type="password" inputmode="numeric" autocomplete="off" placeholder="Masukkan kode"></label>' +
         '<div class="code-err" id="order-err"></div>' +
-        '<div class="sheet-actions" id="order-actions">' +
-          (STATE.qris ? '<button class="ghost" id="order-qris">Lihat QRIS</button>' : '') +
-          '<button class="primary" id="order-wa">Verifikasi &amp; kirim</button>' +
-        '</div>' +
+        '<div class="sheet-actions" id="order-actions"><button class="primary" id="order-wa">Verifikasi &amp; lanjut</button></div>' +
         '<div class="sheet-actions"><button class="ghost" id="order-close">Tutup</button></div>' +
       '</div>';
     document.body.appendChild(overlay);
     overlay.querySelector('#order-close').onclick = function(){ overlay.remove(); };
-    var qb = overlay.querySelector('#order-qris');
-    if(qb) qb.onclick = openQrisModal;
+
     // Kode dicek di server (Supabase). Nomor WhatsApp baru dikirim balik kalau kodenya benar.
     function verify(){
       var input = overlay.querySelector('#order-code'), err = overlay.querySelector('#order-err'), btn = overlay.querySelector('#order-wa');
@@ -616,17 +633,23 @@
         body:JSON.stringify({p_code: val})
       }).then(function(res){ if(!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
         .then(function(wa){
-          btn.disabled = false; btn.textContent = 'Verifikasi & kirim';
+          btn.disabled = false; btn.textContent = 'Verifikasi & lanjut';
           if(!wa){ err.textContent = 'Kode salah. Minta kode yang benar ke admin.'; input.select(); return; }
-          var link = 'https://wa.me/' + encodeURIComponent(String(wa)) + '?text=' + waText;
-          overlay.querySelector('#order-actions').innerHTML = '<a class="wa-open" id="order-open" href="' + escapeHtml(link) + '" target="_blank" rel="noopener">✅ Kode benar — Buka WhatsApp</a>';
+          var payEl = overlay.querySelector('input[name=pay]:checked');
+          var pay = payEl ? payEl.value : 'tunai';
+          var link = 'https://wa.me/' + encodeURIComponent(String(wa)) + '?text=' + waTextFor(pay);
+          var qrisHtml = (pay === 'qris' && STATE.qris)
+            ? '<div class="qris-box"><p class="hint">1. Bayar <b>' + formatRupiah(total) + '</b> lewat QRIS di bawah (isi nominal sesuai total).<br>2. Ketuk tombol WhatsApp, lalu kirim bukti bayarnya.</p><img src="' + escapeHtml(STATE.qris) + '" alt="QRIS"></div>'
+            : '';
+          overlay.querySelector('#order-actions').outerHTML = qrisHtml + '<div class="sheet-actions" id="order-actions"><a class="wa-open" id="order-open" href="' + escapeHtml(link) + '" target="_blank" rel="noopener">✅ Kode benar — Buka WhatsApp</a></div>';
           input.disabled = true;
+          overlay.querySelectorAll('input[name=pay]').forEach(function(r){ r.disabled = true; });
           overlay.querySelector('#order-open').onclick = function(){
             setTimeout(function(){ cart = {}; bayarState = ''; overlay.remove(); render(); }, 400);
           };
         })
         .catch(function(){
-          btn.disabled = false; btn.textContent = 'Verifikasi & kirim';
+          btn.disabled = false; btn.textContent = 'Verifikasi & lanjut';
           err.textContent = 'Tidak bisa memeriksa kode. Periksa internet lalu coba lagi.';
         });
     }
@@ -638,7 +661,7 @@
   function openCalcModal(){
     var overlay = document.createElement('div');
     overlay.className = 'overlay';
-    var rowsHtml = STATE.products.filter(function(p){ return !p.soldOut && !p.noOrder; }).map(function(p){
+    var rowsHtml = STATE.products.filter(function(p){ return !p.soldOut; }).map(function(p){
       return '<div class="calc-row">' +
         '<span class="calc-name">'+escapeHtml(p.name)+' <span class="calc-price">('+formatRupiah(p.price)+')</span></span>' +
         '<input type="number" min="0" inputmode="numeric" value="'+(cart[p.id]||0)+'" data-calc-id="'+p.id+'">' +
@@ -698,12 +721,11 @@
   function handleScan(code, el, totalEl){
     var p = STATE.products.find(function(x){ return x.barcode === code; });
     if(!p){ el.className = 'sc-result bad'; el.textContent = 'Barang belum terdaftar (' + code + ')'; return; }
-    if(p.noOrder){ el.className = 'sc-result info'; el.textContent = 'ℹ️ ' + p.name + ' — ' + formatRupiah(p.price) + '. Info harga, beli langsung di kios.'; return; }
     if(p.soldOut){ el.className = 'sc-result bad'; el.textContent = '⛔ ' + p.name + ' — stok habis'; return; }
     setQty(p.id, (cart[p.id] || 0) + 1);
     render();
     el.className = 'sc-result ok';
-    el.textContent = '✅ ' + p.name + ' — ' + formatRupiah(p.price) + ' (×' + cart[p.id] + ')';
+    el.textContent = (p.noOrder ? '🧮 ' : '✅ ') + p.name + ' — ' + formatRupiah(p.price) + ' (×' + cart[p.id] + ')' + (p.noOrder ? ' · hanya hitungan, tidak ikut pesanan' : '');
     if(totalEl) totalEl.textContent = cartCount() + ' barang · ' + formatRupiah(cartTotal());
   }
   function openScanner(){
