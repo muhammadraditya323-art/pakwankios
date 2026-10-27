@@ -9,20 +9,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#241A12; --paper:#FAF5E7; --card:#FFFFFF;
-    --green:#134B3A; --gold:#C69A3E; --gold-soft:#E4C077;
+    --ink:#1B2A22; --paper:#FFFFFF; --card:#FFFFFF; color-scheme:light;
+    --green:#17694C; --green-deep:#0E3B2D; --green-soft:#E6F1EB; --gold:#C69A3E; --gold-soft:#E4C077;
     --red:#7C2233; --red-deep:#551824;
     --line:rgba(36,26,18,0.14);
-  }
-  @media (prefers-color-scheme: dark){
-    :root{ --paper:#17130E; --card:#221B14; --ink:#F2E8D6; --green:#1D6650; --gold:#D8B15C; --red:#9C3A46; --line:rgba(242,232,214,0.18); }
   }
   *{box-sizing:border-box;}
   body{ margin:0; background:var(--paper); color:var(--ink); font-family:'Public Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; padding-bottom:40px; }
   button{font-family:inherit; cursor:pointer;}
   img{max-width:100%; display:block;}
   :focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
-  .wrap{max-width:640px; margin:0 auto; padding:0 16px;}
+  .wrap{max-width:760px; margin:0 auto; padding:0 16px;}
 
   .top{ background:linear-gradient(160deg,var(--red),var(--red-deep)); color:#FBF3E2; padding:12px 16px; position:sticky; top:0; z-index:10; }
   .top-in{ max-width:640px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:10px; }
@@ -104,69 +101,43 @@
   table.prev td{ padding:5px 4px; border-bottom:1px dashed var(--line); }
   table.prev td:last-child{ text-align:right; white-space:nowrap; }
 
-
-  /* === Penyegaran visual mobile-first: Admin Kios Pak Wan === */
-  :root{
-    --ink:#1B2B24; --paper:#F6F7F2; --card:#FFFFFF;
-    --green:#174B38; --gold:#D7B46A; --gold-soft:#F3E5BE;
-    --red:#B23A48; --red-deep:#812B37; --line:rgba(23,75,56,.14);
-  }
-  @media (prefers-color-scheme: dark){
-    :root{--paper:#121B17;--card:#1B2821;--ink:#F0F5EF;--green:#2D7455;--gold:#D7B46A;--gold-soft:#F3E5BE;--red:#D15A65;--line:rgba(240,245,239,.14);}
-  }
-  body{background:var(--paper);line-height:1.45;padding-bottom:calc(28px + env(safe-area-inset-bottom,0px));}
-  .wrap{max-width:720px;padding:0 14px;}
-  .top{background:var(--green);padding:13px 14px;box-shadow:0 3px 14px rgba(14,37,26,.12);}
-  .top-in{max-width:720px;gap:8px;}
-  .top b{font-family:'Public Sans',system-ui,sans-serif;font-weight:700;letter-spacing:-.02em;}
-  .top small{color:#E1EADF;}
-  .top a,.top button{color:#fff;border-color:rgba(255,255,255,.4);min-height:38px;padding:8px 11px;}
-  .actions{gap:9px;margin:15px 0 12px;}
-  .big{min-height:54px;border-radius:14px;padding:13px 10px;box-shadow:0 2px 8px rgba(14,37,26,.035);}
-  .big.primary{background:var(--green);color:#fff;min-height:58px;}
-  .search{min-height:46px;border-radius:13px;}
-  .chips{gap:7px;padding:12px 0;}
-  .chip{min-height:40px;padding:9px 13px;}
-  .chip.active{background:var(--green);color:#fff;border-color:var(--green);}
-  .list{gap:9px;}
-  .row{gap:10px;padding:10px;border-radius:15px;box-shadow:0 2px 9px rgba(14,37,26,.035);}
-  .row .thumb{width:62px;height:62px;border-radius:12px;background:#EDF1E9;}
-  .meta b{font-size:.9rem;line-height:1.3;}
-  .meta .sub{font-size:.7rem;}
-  .flags{gap:5px;}
-  .flag{min-height:30px;padding:5px 8px;border-radius:999px;font-size:.67rem;}
-  .flag.on{background:var(--gold);color:#253326;border-color:var(--gold);}
-  .flag.on[data-flag="sold_out"]{background:var(--red);color:#fff;border-color:var(--red);}
-  .side{gap:7px;}
-  .price{min-height:40px;padding:9px 10px;background:var(--green);color:#fff;border-radius:11px;}
-  .edit{min-height:34px;border-radius:10px;padding:6px 10px;}
-  .overlay{background:rgba(8,25,17,.58);}
-  .sheet{border-radius:22px 22px 0 0;padding:22px 16px calc(22px + env(safe-area-inset-bottom,0px));}
-  .sheet h2,.login h1{font-family:'Public Sans',system-ui,sans-serif;font-weight:700;letter-spacing:-.02em;}
-  .sheet input:not([type=checkbox]):not([type=file]),.sheet select,.sheet textarea{min-height:45px;border-radius:11px;}
-  .btn{min-height:44px;border-radius:12px;background:var(--green);color:#fff;}
-  .btn.ghost{background:transparent;}
-  .btn.danger{color:var(--red);border-color:var(--red);}
-  .actions-row{gap:9px;}
-  .photo-prev{border-radius:14px;background:#EDF1E9;}
-  .quick button{min-height:42px;border-radius:10px;}
-  .login{max-width:400px;margin:10vh auto 0;padding:0 18px;}
-  .login h1{font-size:1.55rem;}
-  .login input{min-height:48px;border-radius:12px;}
-  .login .btn{min-height:48px;}
-  .scan-frame{border-color:var(--gold);}
-  .scan-bottom{padding:15px 14px calc(15px + env(safe-area-inset-bottom,0px));}
-  .toast{bottom:calc(20px + env(safe-area-inset-bottom,0px));}
-  @media(max-width:380px){
-    .wrap{padding-left:11px;padding-right:11px;}
-    .row{gap:8px;padding:8px;}
-    .row .thumb{width:52px;height:52px;}
-    .price{font-size:.8rem;padding:8px;}
-    .edit{font-size:.7rem;padding:6px 8px;}
-    .flag{padding:4px 6px;font-size:.63rem;}
-    .top a,.top button{padding:7px 9px;font-size:.72rem;}
-  }
-
+  /* ===== Gaya selaras situs (hijau, putih) ===== */
+  html,body{ background:#fff; }
+  .top{ background:var(--green-deep); color:#fff; padding:0; }
+  .top-in{ max-width:760px; padding:10px 16px; }
+  .top b{ font:700 1.1rem 'Fraunces',serif; color:#fff; }
+  .top small{ color:#BFD8CB; opacity:1; }
+  .top button{ color:#fff; border-color:rgba(255,255,255,0.45); }
+  .mainnav{ background:var(--green); }
+  .top .mainnav a{ border:0; border-bottom:3px solid transparent; border-radius:0; background:none; padding:11px 16px; color:#E6F3EC; font:600 0.86rem 'Public Sans',sans-serif; }
+  .top .mainnav a:hover{ background:rgba(255,255,255,0.12); }
+  .mainnav .in{ max-width:760px; margin:0 auto; padding:0 10px; display:flex; }
+  .mainnav a, .mainnav span{ display:inline-flex; align-items:center; padding:11px 16px; color:#E6F3EC; text-decoration:none; font:600 0.86rem 'Public Sans',sans-serif; border-bottom:3px solid transparent; }
+  .mainnav span.on{ color:#fff; border-bottom-color:var(--gold-soft); background:rgba(255,255,255,0.1); }
+  .big.primary, .price, .btn, .chip.active{ color:#fff; }
+  .chip.active{ background:var(--green); border-color:var(--green); }
+  .row .thumb, .photo-prev{ background:#F3F6F4; }
+  .row .thumb svg{ color:#9DB7A9; opacity:1; }
+  .row{ border-radius:12px; }
+  .meta .rate{ color:#B7851A; font-weight:600; }
+  .sl-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:6px; }
+  .sl-item{ display:flex; gap:10px; align-items:center; border:1px solid var(--line); border-radius:10px; padding:8px; }
+  .sl-item.off{ opacity:0.55; }
+  .sl-thumb{ flex:none; width:84px; height:52px; border-radius:8px; overflow:hidden; background:linear-gradient(135deg,var(--green),var(--green-deep)); }
+  .sl-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .sl-meta{ flex:1; min-width:0; }
+  .sl-meta b{ display:block; font-size:0.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sl-meta span{ font-size:0.72rem; opacity:0.6; }
+  .mini{ display:flex; gap:5px; flex-wrap:wrap; margin-top:5px; }
+  .mini button{ border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:999px; padding:4px 10px; font:600 0.7rem 'Public Sans',sans-serif; }
+  .mini button.danger{ color:var(--red); border-color:var(--red); }
+  .mini button.ok{ background:var(--green); color:#fff; border-color:var(--green); }
+  .cm-item{ border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+  .cm-item.pending{ border-color:var(--gold); background:#FFFAEE; }
+  .cm-item .cm-top{ display:flex; justify-content:space-between; gap:8px; font-size:0.78rem; }
+  .cm-item p{ margin:5px 0 0; font-size:0.88rem; line-height:1.4; overflow-wrap:anywhere; }
+  .tagp{ font:700 0.64rem 'Public Sans',sans-serif; padding:2px 8px; border-radius:999px; background:var(--gold-soft); color:#2A1B08; }
+  .tago{ font:700 0.64rem 'Public Sans',sans-serif; padding:2px 8px; border-radius:999px; background:var(--green-soft); color:var(--green); }
 </style>
 </head>
 <body>
@@ -307,14 +278,18 @@
   function renderMain(){
     var cats = ['Semua'].concat(categories());
     app.innerHTML =
-      '<header class="top"><div class="top-in"><div><b>Admin</b><small>Kios Pak Wan</small></div>' +
-        '<div><a href="index.html" target="_blank" rel="noopener">Lihat situs</a><button id="logout">Keluar</button></div></div></header>' +
+      '<header class="top"><div class="top-in"><div><b>Kios Pak Wan</b><small>Halaman admin</small></div>' +
+        '<div><button id="logout">Keluar</button></div></div>' +
+        '<nav class="mainnav"><div class="in"><a href="index.html">Beranda</a><a href="index.html#komentar">Komentar</a><a href="index.html#layanan">Layanan</a><span class="on">Admin</span></div></nav></header>' +
       '<div class="wrap">' +
         '<section class="actions">' +
-          '<button class="big primary" id="b-scan">📷 Scan Barcode</button>' +
+          '<button class="big primary" id="b-scan">Scan Barcode</button>' +
           '<button class="big" id="b-add">+ Barang Baru</button>' +
-          '<button class="big" id="b-bulk">💲 Harga Massal</button>' +
-          '<button class="big" id="b-qris" style="grid-column:1/-1">🧾 QRIS Pembayaran</button>' +
+          '<button class="big" id="b-bulk">Harga Massal</button>' +
+          '<button class="big" id="b-slide">Slide Banner</button>' +
+          '<button class="big" id="b-sv">Layanan</button>' +
+          '<button class="big" id="b-cm">Komentar</button>' +
+          '<button class="big" id="b-qris" style="grid-column:1/-1">QRIS Pembayaran</button>' +
         '</section>' +
         '<input class="search" id="q" type="search" placeholder="Cari nama atau barcode" value="' + esc(query) + '">' +
         '<nav class="chips" id="chips">' + cats.map(function(c){ return '<button class="chip' + (c===filterCat?' active':'') + '" data-cat="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</nav>' +
@@ -325,6 +300,10 @@
     document.getElementById('b-add').onclick = function(){ openEdit(null, {}); };
     document.getElementById('b-bulk').onclick = openBulk;
     document.getElementById('b-qris').onclick = openQris;
+    document.getElementById('b-slide').onclick = openSlides;
+    document.getElementById('b-cm').onclick = openComments;
+    document.getElementById('b-sv').onclick = openServices;
+    refreshPending();
     document.getElementById('q').addEventListener('input', function(e){ query = e.target.value; renderList(); });
     document.getElementById('chips').onclick = function(e){
       var b = e.target.closest('.chip'); if(!b) return;
@@ -351,11 +330,11 @@
     ul.innerHTML = items.map(function(p){
       return '<li class="row" data-id="' + esc(p.id) + '">' +
         '<div class="thumb">' + (p.photo ? '<img src="' + esc(photoUrl(p.photo)) + '" alt="" loading="lazy">' : icon()) + '</div>' +
-        '<div class="meta"><b>' + esc(p.name) + '</b><span class="sub">' + esc(p.category) + (p.barcode ? ' · ' + esc(p.barcode) : '') + '</span>' +
+        '<div class="meta"><b>' + esc(p.name) + '</b><span class="sub">' + esc(p.category) + (p.barcode ? ' · ' + esc(p.barcode) : '') + (p.rating_count > 0 ? ' · <span class="rate">Rating ' + Number(p.rating_avg).toFixed(1) + ' (' + p.rating_count + ')</span>' : '') + '</span>' +
           '<div class="flags">' +
-            '<button class="flag' + (p.is_new?' on':'') + '" data-flag="is_new">🆕 Baru</button>' +
-            '<button class="flag' + (p.is_best?' on':'') + '" data-flag="is_best">🔥 Terlaris</button>' +
-            '<button class="flag' + (p.sold_out?' on':'') + '" data-flag="sold_out">⛔ Habis</button>' +
+            '<button class="flag' + (p.is_new?' on':'') + '" data-flag="is_new">Baru</button>' +
+            '<button class="flag' + (p.is_best?' on':'') + '" data-flag="is_best">Terlaris</button>' +
+            '<button class="flag' + (p.sold_out?' on':'') + '" data-flag="sold_out">Habis</button>' +
           '</div></div>' +
         '<div class="side"><button class="price" data-act="price">' + rp(p.price) + '</button><button class="edit" data-act="edit">Ubah</button></div>' +
       '</li>';
@@ -432,7 +411,7 @@
       '<p class="sub-note">Gambar ini tampil ke pelanggan saat memilih bayar QRIS. Pakai gambar QRIS toko Anda yang asli.</p>' +
       '<div class="photo-prev" id="q-prev" style="width:100%;height:220px;margin-bottom:12px">Memeriksa…</div>' +
       '<div class="photo-btns" style="margin-bottom:12px">' +
-        '<label class="btn filebtn" style="margin:0">📷 Foto atau pilih gambar QRIS<input id="q-file" type="file" accept="image/*"></label>' +
+        '<label class="btn filebtn" style="margin:0">Foto atau pilih gambar QRIS<input id="q-file" type="file" accept="image/*"></label>' +
       '</div>' +
       '<div class="actions-row"><button class="btn danger" id="q-del" style="display:none">Hapus QRIS</button><button class="btn ghost" id="q-close">Tutup</button></div>');
     var img = new Image();
@@ -458,6 +437,209 @@
     };
   }
 
+
+  /* ---- Slide banner ---- */
+  function tableMsg(ex){
+    if(ex && (ex.status === 404 || (ex.json && /PGRST20|42P01/.test(ex.json.code || '')))) return 'Tabel belum ada. Jalankan file semua-update.sql di Supabase dulu.';
+    return errMsg(ex);
+  }
+  function openSlides(){
+    var ov = openSheet(
+      '<h2>Slide banner</h2><p class="sub-note">Slide tampil di bagian atas situs dan berganti otomatis tiap 5 detik. Pakai gambar lebar (landscape). Kalau belum ada slide, situs menampilkan banner bawaan.</p>' +
+      '<div class="sl-list" id="sl-list">Memuat…</div>' +
+      '<div class="actions-row"><button class="btn ghost" id="sl-close">Tutup</button><button class="btn" id="sl-add">+ Slide Baru</button></div>');
+    var rows = [];
+    function draw(){
+      var box = ov.querySelector('#sl-list');
+      if(!rows.length){ box.innerHTML = '<div class="empty">Belum ada slide.</div>'; return; }
+      box.innerHTML = rows.map(function(r){
+        return '<div class="sl-item' + (r.active ? '' : ' off') + '" data-id="' + r.id + '">' +
+          '<div class="sl-thumb">' + (r.image ? '<img src="' + esc(photoUrl(r.image)) + '" alt="">' : '') + '</div>' +
+          '<div class="sl-meta"><b>' + esc(r.title || '(tanpa judul)') + '</b><span>Urutan ' + r.position + (r.active ? '' : ' · nonaktif') + '</span>' +
+            '<div class="mini"><button data-a="toggle">' + (r.active ? 'Nonaktifkan' : 'Aktifkan') + '</button><button data-a="edit">Ubah</button><button class="danger" data-a="del">Hapus</button></div></div></div>';
+      }).join('');
+    }
+    function load(){
+      api('/rest/v1/slides?select=*&order=position.asc,id.asc').then(function(r){ rows = r; draw(); })
+        .catch(function(ex){ ov.querySelector('#sl-list').innerHTML = '<div class="empty">' + esc(tableMsg(ex)) + '</div>'; });
+    }
+    ov.querySelector('#sl-close').onclick = ov.close;
+    ov.querySelector('#sl-add').onclick = function(){ openSlideEdit(null, load, rows); };
+    ov.querySelector('#sl-list').onclick = function(e){
+      var b = e.target.closest('[data-a]'); if(!b) return;
+      var r = rows.find(function(x){ return String(x.id) === b.closest('.sl-item').dataset.id; }); if(!r) return;
+      if(b.dataset.a === 'edit') openSlideEdit(r, load, rows);
+      else if(b.dataset.a === 'toggle'){
+        api('/rest/v1/slides?id=eq.' + r.id, {method:'PATCH', headers:JSON_H, body:JSON.stringify({active:!r.active})}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
+      } else if(b.dataset.a === 'del'){
+        if(!confirm('Hapus slide ini?')) return;
+        api('/rest/v1/slides?id=eq.' + r.id, {method:'DELETE'}).then(function(){ if(r.image) deletePhoto(r.image); load(); toast('Slide dihapus'); }).catch(function(ex){ toast(tableMsg(ex), true); });
+      }
+    };
+    load();
+  }
+  function openSlideEdit(existing, done, all){
+    var isEdit = !!existing, pendingBlob = null;
+    var maxPos = 0; (all || []).forEach(function(r){ if(r.position > maxPos) maxPos = r.position; });
+    var r = existing || {title:'', subtitle:'', image:null, link:'', position:maxPos + 1, active:true};
+    var ov = openSheet(
+      '<h2>' + (isEdit ? 'Ubah slide' : 'Slide baru') + '</h2>' +
+      '<div class="photo-box"><div class="photo-prev" id="s-prev" style="width:140px;height:84px">' + (r.image ? '<img src="' + esc(photoUrl(r.image)) + '" alt="">' : 'Belum ada gambar') + '</div>' +
+        '<div class="photo-btns"><label class="btn filebtn" style="margin:0">Ambil foto<input id="s-cam" type="file" accept="image/*" capture="environment"></label>' +
+        '<label class="btn ghost filebtn" style="margin:0">Pilih dari galeri<input id="s-gal" type="file" accept="image/*"></label></div></div>' +
+      '<label>Judul<input id="s-title" maxlength="80" value="' + esc(r.title) + '" placeholder="Contoh: Diskon akhir pekan"></label>' +
+      '<label>Keterangan<textarea id="s-sub" maxlength="160" placeholder="Teks singkat di bawah judul">' + esc(r.subtitle) + '</textarea></label>' +
+      '<label>Tautan tombol (opsional, harus diawali https://)<input id="s-link" inputmode="url" value="' + esc(r.link || '') + '" placeholder="https://..."></label>' +
+      '<label>Urutan (angka kecil tampil lebih dulu)<input id="s-pos" type="number" inputmode="numeric" value="' + r.position + '"></label>' +
+      '<label class="check"><input id="s-act" type="checkbox"' + (r.active ? ' checked' : '') + '> Tampilkan di situs</label>' +
+      '<div class="actions-row"><button class="btn ghost" id="s-cancel">Batal</button><button class="btn" id="s-save">Simpan</button></div>');
+    function pick(e){
+      var f = e.target.files && e.target.files[0]; if(!f) return;
+      compress(f, {max:1400}).then(function(b){ pendingBlob = b; ov.querySelector('#s-prev').innerHTML = '<img src="' + URL.createObjectURL(b) + '" alt="">'; })
+        .catch(function(ex){ toast(ex.message, true); });
+    }
+    ov.querySelector('#s-cam').addEventListener('change', pick);
+    ov.querySelector('#s-gal').addEventListener('change', pick);
+    ov.querySelector('#s-cancel').onclick = ov.close;
+    ov.querySelector('#s-save').onclick = function(){
+      var link = ov.querySelector('#s-link').value.trim();
+      if(link && !/^https:\/\//i.test(link)){ toast('Tautan harus diawali https://', true); return; }
+      var title = ov.querySelector('#s-title').value.trim(), sub = ov.querySelector('#s-sub').value.trim();
+      if(!title && !sub && !pendingBlob && !r.image){ toast('Isi judul atau pilih gambar.', true); return; }
+      var data = {title:title, subtitle:sub, link:link || null, position:parseInt(ov.querySelector('#s-pos').value, 10) || 0, active:ov.querySelector('#s-act').checked};
+      var btn = ov.querySelector('#s-save'); btn.disabled = true; btn.textContent = 'Menyimpan…';
+      var oldImg = r.image, step = Promise.resolve();
+      if(pendingBlob){
+        var fname = 'slide-' + Date.now().toString(36) + '.jpg';
+        step = uploadPhoto(pendingBlob, fname).then(function(){ data.image = fname; });
+      }
+      step.then(function(){
+        return isEdit ? api('/rest/v1/slides?id=eq.' + r.id, {method:'PATCH', headers:JSON_H, body:JSON.stringify(data)})
+                      : api('/rest/v1/slides', {method:'POST', headers:JSON_H, body:JSON.stringify(data)});
+      }).then(function(){
+        if(pendingBlob && oldImg) deletePhoto(oldImg);
+        ov.close(); done(); toast('Slide tersimpan');
+      }).catch(function(ex){
+        if(data.image && !isEdit) deletePhoto(data.image);
+        btn.disabled = false; btn.textContent = 'Simpan'; toast(tableMsg(ex), true);
+      });
+    };
+  }
+
+
+  /* ---- Layanan ---- */
+  var DEFAULT_SERVICES = [
+    ['Cek harga & stok','Lihat harga dan ketersediaan barang dari rumah sebelum datang ke kios.'],
+    ['Pesan lewat WhatsApp','Pilih barang, masukkan kode persetujuan dari kios, lalu kirim pesanan lewat WhatsApp.'],
+    ['Bayar tunai atau QRIS','Bayar tunai di kios atau lewat QRIS kios.'],
+    ['Scan barcode','Scan barcode barang untuk melihat harga dan menambahkannya ke daftar belanja.'],
+    ['Kalkulator belanja','Hitung total belanja dan kembalian sebelum membayar.'],
+    ['Rokok','Harga rokok bisa dihitung di situs, tetapi pembelian hanya langsung di kios.']
+  ];
+  function openServices(){
+    var ov = openSheet(
+      '<h2>Layanan kios</h2><p class="sub-note">Daftar ini tampil di menu Layanan situs. Kalau kosong, situs menampilkan layanan bawaan.</p>' +
+      '<div class="sl-list" id="sv-list">Memuat…</div>' +
+      '<div class="actions-row"><button class="btn ghost" id="sv-close">Tutup</button><button class="btn" id="sv-add">+ Layanan Baru</button></div>' +
+      '<div class="actions-row"><button class="btn ghost" id="sv-seed" style="display:none">Isi dengan layanan bawaan</button></div>');
+    var rows = [];
+    function draw(){
+      var box = ov.querySelector('#sv-list');
+      ov.querySelector('#sv-seed').style.display = rows.length ? 'none' : '';
+      if(!rows.length){ box.innerHTML = '<div class="empty">Belum ada layanan sendiri.</div>'; return; }
+      box.innerHTML = rows.map(function(r){
+        return '<div class="sl-item' + (r.active ? '' : ' off') + '" data-id="' + r.id + '"><div class="sl-meta"><b>' + esc(r.title) + '</b><span>' + esc(r.description) + '</span>' +
+          '<div class="mini"><button data-a="toggle">' + (r.active ? 'Nonaktifkan' : 'Aktifkan') + '</button><button data-a="edit">Ubah</button><button class="danger" data-a="del">Hapus</button></div></div></div>';
+      }).join('');
+    }
+    function load(){
+      api('/rest/v1/services?select=*&order=position.asc,id.asc').then(function(r){ rows = r; draw(); })
+        .catch(function(ex){ ov.querySelector('#sv-list').innerHTML = '<div class="empty">' + esc(tableMsg(ex)) + '</div>'; });
+    }
+    ov.querySelector('#sv-close').onclick = ov.close;
+    ov.querySelector('#sv-add').onclick = function(){ openServiceEdit(null, load, rows); };
+    ov.querySelector('#sv-seed').onclick = function(){
+      var data = DEFAULT_SERVICES.map(function(d, i){ return {title:d[0], description:d[1], position:i + 1, active:true}; });
+      api('/rest/v1/services', {method:'POST', headers:JSON_H, body:JSON.stringify(data)}).then(function(){ load(); toast('Layanan bawaan ditambahkan'); })
+        .catch(function(ex){ toast(tableMsg(ex), true); });
+    };
+    ov.querySelector('#sv-list').onclick = function(e){
+      var b = e.target.closest('[data-a]'); if(!b) return;
+      var r = rows.find(function(x){ return String(x.id) === b.closest('.sl-item').dataset.id; }); if(!r) return;
+      if(b.dataset.a === 'edit') openServiceEdit(r, load, rows);
+      else if(b.dataset.a === 'toggle'){
+        api('/rest/v1/services?id=eq.' + r.id, {method:'PATCH', headers:JSON_H, body:JSON.stringify({active:!r.active})}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
+      } else if(b.dataset.a === 'del'){
+        if(!confirm('Hapus layanan ini?')) return;
+        api('/rest/v1/services?id=eq.' + r.id, {method:'DELETE'}).then(function(){ load(); toast('Layanan dihapus'); }).catch(function(ex){ toast(tableMsg(ex), true); });
+      }
+    };
+    load();
+  }
+  function openServiceEdit(existing, done, all){
+    var isEdit = !!existing, maxPos = 0;
+    (all || []).forEach(function(r){ if(r.position > maxPos) maxPos = r.position; });
+    var r = existing || {title:'', description:'', position:maxPos + 1, active:true};
+    var ov = openSheet(
+      '<h2>' + (isEdit ? 'Ubah layanan' : 'Layanan baru') + '</h2>' +
+      '<label>Nama layanan<input id="v-title" maxlength="60" value="' + esc(r.title) + '" placeholder="Contoh: Antar belanja"></label>' +
+      '<label>Penjelasan singkat<textarea id="v-desc" maxlength="200" placeholder="Apa yang pelanggan dapat">' + esc(r.description) + '</textarea></label>' +
+      '<label>Urutan (angka kecil tampil lebih dulu)<input id="v-pos" type="number" inputmode="numeric" value="' + r.position + '"></label>' +
+      '<label class="check"><input id="v-act" type="checkbox"' + (r.active ? ' checked' : '') + '> Tampilkan di situs</label>' +
+      '<div class="actions-row"><button class="btn ghost" id="v-cancel">Batal</button><button class="btn" id="v-save">Simpan</button></div>');
+    ov.querySelector('#v-cancel').onclick = ov.close;
+    ov.querySelector('#v-save').onclick = function(){
+      var title = ov.querySelector('#v-title').value.trim();
+      if(!title){ toast('Isi nama layanan.', true); return; }
+      var data = {title:title, description:ov.querySelector('#v-desc').value.trim(), position:parseInt(ov.querySelector('#v-pos').value, 10) || 0, active:ov.querySelector('#v-act').checked};
+      var btn = ov.querySelector('#v-save'); btn.disabled = true; btn.textContent = 'Menyimpan…';
+      (isEdit ? api('/rest/v1/services?id=eq.' + r.id, {method:'PATCH', headers:JSON_H, body:JSON.stringify(data)})
+              : api('/rest/v1/services', {method:'POST', headers:JSON_H, body:JSON.stringify(data)}))
+        .then(function(){ ov.close(); done(); toast('Layanan tersimpan'); })
+        .catch(function(ex){ btn.disabled = false; btn.textContent = 'Simpan'; toast(tableMsg(ex), true); });
+    };
+  }
+
+  /* ---- Komentar ---- */
+  function refreshPending(){
+    api('/rest/v1/comments?select=id&approved=eq.false').then(function(rows){
+      var b = document.getElementById('b-cm'); if(b) b.textContent = rows.length ? 'Komentar (' + rows.length + ' baru)' : 'Komentar';
+    }).catch(function(){});
+  }
+  function openComments(){
+    var ov = openSheet(
+      '<h2>Komentar pelanggan</h2><p class="sub-note">Komentar baru tampil di situs setelah Anda setujui. Hapus yang tidak pantas.</p>' +
+      '<div id="cm-list">Memuat…</div><div class="actions-row"><button class="btn ghost" id="cm-close">Tutup</button></div>');
+    var rows = [];
+    function fmt(iso){ try{ return new Date(iso).toLocaleString('id-ID', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', timeZone:'Asia/Jakarta'}); }catch(e){ return ''; } }
+    function draw(){
+      var box = ov.querySelector('#cm-list');
+      if(!rows.length){ box.innerHTML = '<div class="empty">Belum ada komentar.</div>'; return; }
+      box.innerHTML = rows.map(function(c){
+        return '<div class="cm-item' + (c.approved ? '' : ' pending') + '" data-id="' + c.id + '">' +
+          '<div class="cm-top"><b>' + esc(c.name) + '</b><span>' + fmt(c.created_at) + ' ' + (c.approved ? '<span class="tago">Tampil</span>' : '<span class="tagp">Menunggu</span>') + '</span></div>' +
+          '<p>' + esc(c.body) + '</p>' +
+          '<div class="mini">' + (c.approved ? '<button data-a="hide">Sembunyikan</button>' : '<button class="ok" data-a="ok">Setujui</button>') + '<button class="danger" data-a="del">Hapus</button></div></div>';
+      }).join('');
+    }
+    function load(){
+      api('/rest/v1/comments?select=id,name,body,approved,created_at&order=approved.asc,id.desc&limit=100').then(function(r){ rows = r; draw(); refreshPending(); })
+        .catch(function(ex){ ov.querySelector('#cm-list').innerHTML = '<div class="empty">' + esc(tableMsg(ex)) + '</div>'; });
+    }
+    ov.querySelector('#cm-close').onclick = ov.close;
+    ov.querySelector('#cm-list').onclick = function(e){
+      var b = e.target.closest('[data-a]'); if(!b) return;
+      var id = b.closest('.cm-item').dataset.id;
+      if(b.dataset.a === 'del'){
+        if(!confirm('Hapus komentar ini?')) return;
+        api('/rest/v1/comments?id=eq.' + id, {method:'DELETE'}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
+      } else {
+        api('/rest/v1/comments?id=eq.' + id, {method:'PATCH', headers:JSON_H, body:JSON.stringify({approved:b.dataset.a === 'ok'})}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
+      }
+    };
+    load();
+  }
+
   /* ---- Tambah / ubah barang ---- */
   function openEdit(existing, preset){
     var isEdit = !!existing;
@@ -468,24 +650,24 @@
       '<h2>' + (isEdit ? 'Ubah barang' : 'Barang baru') + '</h2>' +
       '<div class="photo-box"><div class="photo-prev" id="e-prev">' + (p.photo ? '<img src="' + esc(photoUrl(p.photo)) + '" alt="">' : 'Belum ada foto') + '</div>' +
         '<div class="photo-btns">' +
-          '<label class="btn filebtn" style="margin:0">📷 Ambil foto<input id="e-cam" type="file" accept="image/*" capture="environment"></label>' +
+          '<label class="btn filebtn" style="margin:0">Ambil foto<input id="e-cam" type="file" accept="image/*" capture="environment"></label>' +
           '<label class="btn ghost filebtn" style="margin:0">Pilih dari galeri<input id="e-gal" type="file" accept="image/*"></label>' +
         '</div></div>' +
       '<label>Nama barang<input id="e-name" value="' + esc(p.name) + '" placeholder="Contoh: Indomie Goreng"></label>' +
       '<div class="inline"><label>Barcode<input id="e-bar" inputmode="numeric" value="' + esc(p.barcode || '') + '" placeholder="Scan atau ketik"></label>' +
-        '<button class="btn" id="e-scan" type="button">📷 Scan</button></div>' +
-      '<button class="btn ghost" id="e-lookup" type="button" style="width:100%;margin:8px 0 2px">🔎 Isi otomatis dari barcode</button>' +
+        '<button class="btn" id="e-scan" type="button">Scan</button></div>' +
+      '<button class="btn ghost" id="e-lookup" type="button" style="width:100%;margin:8px 0 2px">Isi otomatis dari barcode</button>' +
       '<div class="sub-note" id="e-lookup-msg" style="min-height:1.1em"></div>' +
       '<div class="inline" style="margin-top:6px"><label>Harga modal (Rp)<input id="e-cost" type="number" inputmode="numeric" min="0" value="' + (p.cost == null ? '' : p.cost) + '" placeholder="kulakan"></label>' +
         '<label>Untung (%)<input id="e-margin" type="number" inputmode="decimal" min="0" value="' + (p.margin_pct == null ? getMargin() : p.margin_pct) + '"></label></div>' +
-      '<button class="btn ghost" id="e-calc" type="button" style="width:100%;margin:8px 0 12px">🧮 Hitung harga jual dari modal</button>' +
+      '<button class="btn ghost" id="e-calc" type="button" style="width:100%;margin:8px 0 12px">Hitung harga jual dari modal</button>' +
       '<label>Harga jual (Rp)<input id="e-price" type="number" inputmode="numeric" min="0" value="' + (p.price === '' ? '' : p.price) + '" placeholder="3500"></label>' +
       '<div class="sub-note" id="e-profit" style="margin:-6px 0 10px"></div>' +
       '<label>Kategori<select id="e-cat">' + cats.map(function(c){ return '<option' + (c===p.category?' selected':'') + '>' + esc(c) + '</option>'; }).join('') + '</select></label>' +
       '<label>Keterangan (opsional)<textarea id="e-desc" placeholder="Ukuran, varian, dll">' + esc(p.description || '') + '</textarea></label>' +
-      '<label class="check"><input id="e-new" type="checkbox"' + (p.is_new?' checked':'') + '> 🆕 Stok baru</label>' +
-      '<label class="check"><input id="e-best" type="checkbox"' + (p.is_best?' checked':'') + '> 🔥 Barang terlaris</label>' +
-      '<label class="check"><input id="e-sold" type="checkbox"' + (p.sold_out?' checked':'') + '> ⛔ Stok habis</label>' +
+      '<label class="check"><input id="e-new" type="checkbox"' + (p.is_new?' checked':'') + '> Stok baru</label>' +
+      '<label class="check"><input id="e-best" type="checkbox"' + (p.is_best?' checked':'') + '> Barang terlaris</label>' +
+      '<label class="check"><input id="e-sold" type="checkbox"' + (p.sold_out?' checked':'') + '> Stok habis</label>' +
       '<div class="actions-row">' + (isEdit ? '<button class="btn danger" id="e-del">Hapus</button>' : '') +
         '<button class="btn ghost" id="e-cancel">Batal</button><button class="btn" id="e-save">Simpan</button></div>');
 
@@ -613,7 +795,7 @@
       if(!changes.length){ box.innerHTML = '<p class="sub-note">Tidak ada harga yang berubah.</p>'; }
       else {
         box.innerHTML = '<p class="sub-note"><b>' + changes.length + ' barang</b> akan berubah:</p><table class="prev">' +
-          changes.slice(0,8).map(function(c){ return '<tr><td>' + esc(c.p.name) + '</td><td>' + rp(c.from) + ' → <b>' + rp(c.to) + '</b></td></tr>'; }).join('') +
+          changes.slice(0,8).map(function(c){ return '<tr><td>' + esc(c.p.name) + '</td><td>' + rp(c.from) + ' ke <b>' + rp(c.to) + '</b></td></tr>'; }).join('') +
           (changes.length > 8 ? '<tr><td colspan="2">…dan ' + (changes.length - 8) + ' lainnya</td></tr>' : '') + '</table>';
       }
       ov.querySelector('#bk-apply').disabled = !changes.length;
