@@ -4,13 +4,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Admin Kios Pak Wan</title>
+<link rel="icon" type="image/png" href="aset/favicon.png">
+<meta name="theme-color" content="#14532D">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#1B2A22; --paper:#FFFFFF; --card:#FFFFFF; color-scheme:light;
-    --green:#17694C; --green-deep:#0E3B2D; --green-soft:#E6F1EB; --gold:#C69A3E; --gold-soft:#E4C077;
+    --green:#1F7A3E; --green-deep:#14532D; --green-soft:#EAF4EC; --gold:#F2B200; --gold-soft:#F7CB45;
     --red:#7C2233; --red-deep:#551824;
     --line:rgba(36,26,18,0.14);
   }
@@ -137,6 +139,11 @@
   .cm-item .cm-top{ display:flex; justify-content:space-between; gap:8px; font-size:0.78rem; }
   .cm-item p{ margin:5px 0 0; font-size:0.88rem; line-height:1.4; overflow-wrap:anywhere; }
   .tagp{ font:700 0.64rem 'Public Sans',sans-serif; padding:2px 8px; border-radius:999px; background:var(--gold-soft); color:#2A1B08; }
+  .top .mainnav a, .mainnav span{ padding:11px 11px !important; }
+  .top-in .brandrow{ display:flex; align-items:center; gap:10px; }
+  .top-in .brandrow img{ width:34px; height:34px; border-radius:8px; }
+  .st-badge{ font:700 0.64rem 'Public Sans',sans-serif; padding:2px 8px; border-radius:999px; background:var(--gold); color:#2A1B08; }
+  .cm-top .stars-t{ color:#B07F00; letter-spacing:1px; }
   .tago{ font:700 0.64rem 'Public Sans',sans-serif; padding:2px 8px; border-radius:999px; background:var(--green-soft); color:var(--green); }
 </style>
 </head>
@@ -278,9 +285,9 @@
   function renderMain(){
     var cats = ['Semua'].concat(categories());
     app.innerHTML =
-      '<header class="top"><div class="top-in"><div><b>Kios Pak Wan</b><small>Halaman admin</small></div>' +
+      '<header class="top"><div class="top-in"><div class="brandrow"><img src="aset/ikon-192.png" alt=""><div><b>Kios Pak Wan</b><small>Halaman admin</small></div></div>' +
         '<div><button id="logout">Keluar</button></div></div>' +
-        '<nav class="mainnav"><div class="in"><a href="index.html">Beranda</a><a href="index.html#komentar">Komentar</a><a href="index.html#layanan">Layanan</a><span class="on">Admin</span></div></nav></header>' +
+        '<nav class="mainnav"><div class="in"><a href="index.html">Beranda</a><a href="index.html#komentar">Komentar</a><a href="index.html#info">Info</a><a href="index.html#layanan">Layanan</a><span class="on">Admin</span></div></nav></header>' +
       '<div class="wrap">' +
         '<section class="actions">' +
           '<button class="big primary" id="b-scan">Scan Barcode</button>' +
@@ -289,6 +296,9 @@
           '<button class="big" id="b-slide">Slide Banner</button>' +
           '<button class="big" id="b-sv">Layanan</button>' +
           '<button class="big" id="b-cm">Komentar</button>' +
+          '<button class="big" id="b-info">Info (Pengumuman)</button>' +
+          '<button class="big" id="b-rq">Request Barang</button>' +
+          '<button class="big" id="b-miss">Pencarian Tak Ketemu</button>' +
           '<button class="big" id="b-qris" style="grid-column:1/-1">QRIS Pembayaran</button>' +
         '</section>' +
         '<input class="search" id="q" type="search" placeholder="Cari nama atau barcode" value="' + esc(query) + '">' +
@@ -303,7 +313,10 @@
     document.getElementById('b-slide').onclick = openSlides;
     document.getElementById('b-cm').onclick = openComments;
     document.getElementById('b-sv').onclick = openServices;
-    refreshPending();
+    document.getElementById('b-info').onclick = openInfo;
+    document.getElementById('b-rq').onclick = openRequests;
+    document.getElementById('b-miss').onclick = openMisses;
+    refreshPending(); refreshRequests();
     document.getElementById('q').addEventListener('input', function(e){ query = e.target.value; renderList(); });
     document.getElementById('chips').onclick = function(e){
       var b = e.target.closest('.chip'); if(!b) return;
@@ -440,7 +453,7 @@
 
   /* ---- Slide banner ---- */
   function tableMsg(ex){
-    if(ex && (ex.status === 404 || (ex.json && /PGRST20|42P01/.test(ex.json.code || '')))) return 'Tabel belum ada. Jalankan file semua-update.sql di Supabase dulu.';
+    if(ex && (ex.status === 404 || (ex.json && /PGRST20|42P01/.test(ex.json.code || '')))) return 'Tabel belum ada. Jalankan file SQL terbaru (sql-4, sql-5, sql-6) di Supabase dulu.';
     return errMsg(ex);
   }
   function openSlides(){
@@ -618,12 +631,15 @@
       box.innerHTML = rows.map(function(c){
         return '<div class="cm-item' + (c.approved ? '' : ' pending') + '" data-id="' + c.id + '">' +
           '<div class="cm-top"><b>' + esc(c.name) + '</b><span>' + fmt(c.created_at) + ' ' + (c.approved ? '<span class="tago">Tampil</span>' : '<span class="tagp">Menunggu</span>') + '</span></div>' +
-          '<p>' + esc(c.body) + '</p>' +
+          (c.stars ? '<div class="stars-t">' + '★★★★★'.slice(0, c.stars) + '☆☆☆☆☆'.slice(0, 5 - c.stars) + '</div>' : '') + '<p>' + esc(c.body) + '</p>' +
           '<div class="mini">' + (c.approved ? '<button data-a="hide">Sembunyikan</button>' : '<button class="ok" data-a="ok">Setujui</button>') + '<button class="danger" data-a="del">Hapus</button></div></div>';
       }).join('');
     }
     function load(){
-      api('/rest/v1/comments?select=id,name,body,approved,created_at&order=approved.asc,id.desc&limit=100').then(function(r){ rows = r; draw(); refreshPending(); })
+      var qs = '&order=approved.asc,id.desc&limit=100';
+      api('/rest/v1/comments?select=id,name,body,approved,created_at,stars' + qs)
+        .catch(function(ex){ if(ex && ex.status === 400) return api('/rest/v1/comments?select=id,name,body,approved,created_at' + qs); throw ex; })
+        .then(function(r){ rows = r; draw(); refreshPending(); })
         .catch(function(ex){ ov.querySelector('#cm-list').innerHTML = '<div class="empty">' + esc(tableMsg(ex)) + '</div>'; });
     }
     ov.querySelector('#cm-close').onclick = ov.close;
@@ -636,6 +652,144 @@
       } else {
         api('/rest/v1/comments?id=eq.' + id, {method:'PATCH', headers:JSON_H, body:JSON.stringify({approved:b.dataset.a === 'ok'})}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
       }
+    };
+    load();
+  }
+
+
+  /* ---- Info: Pengumuman + Tentang Kios ---- */
+  function openInfo(){
+    var ov = openSheet(
+      '<h2>Info situs</h2><p class="sub-note">Tampil di menu Info. Pengumuman penting muncul juga di Beranda.</p>' +
+      '<label>Tentang Kios (kosongkan baris untuk paragraf baru)<textarea id="ab-text" rows="6" maxlength="1500" placeholder="Ceritakan tentang kios Anda"></textarea></label>' +
+      '<div class="actions-row"><button class="btn" id="ab-save">Simpan Tentang Kios</button></div>' +
+      '<h3 style="margin:16px 0 8px;font-size:0.95rem">Pengumuman</h3><div class="sl-list" id="an-list">Memuat…</div>' +
+      '<div class="actions-row"><button class="btn ghost" id="an-close">Tutup</button><button class="btn" id="an-add">+ Pengumuman</button></div>');
+    var rows = [];
+    function fmt(iso){ try{ return new Date(iso).toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric', timeZone:'Asia/Jakarta'}); }catch(e){ return ''; } }
+    function draw(){
+      var box = ov.querySelector('#an-list');
+      if(!rows.length){ box.innerHTML = '<div class="empty">Belum ada pengumuman.</div>'; return; }
+      box.innerHTML = rows.map(function(r){
+        return '<div class="sl-item' + (r.active ? '' : ' off') + '" data-id="' + r.id + '"><div class="sl-meta"><b>' + esc(r.title) + (r.pinned ? ' <span class="st-badge">Penting</span>' : '') + '</b><span>' + esc(r.body).slice(0, 120) + ' · ' + fmt(r.created_at) + '</span>' +
+          '<div class="mini"><button data-a="toggle">' + (r.active ? 'Sembunyikan' : 'Tampilkan') + '</button><button data-a="edit">Ubah</button><button class="danger" data-a="del">Hapus</button></div></div></div>';
+      }).join('');
+    }
+    function load(){
+      api('/rest/v1/announcements?select=*&order=pinned.desc,id.desc').then(function(r){ rows = r; draw(); })
+        .catch(function(ex){ ov.querySelector('#an-list').innerHTML = '<div class="empty">' + esc(tableMsg(ex)) + '</div>'; });
+      api('/rest/v1/site_content?select=value&key=eq.about').then(function(r){ ov.querySelector('#ab-text').value = (r[0] && r[0].value) || ''; }).catch(function(){});
+    }
+    ov.querySelector('#an-close').onclick = ov.close;
+    ov.querySelector('#an-add').onclick = function(){ openAnnEdit(null, load); };
+    ov.querySelector('#ab-save').onclick = function(){
+      var btn = ov.querySelector('#ab-save'); btn.disabled = true;
+      api('/rest/v1/site_content?on_conflict=key', {method:'POST', headers:{'Content-Type':'application/json', Prefer:'resolution=merge-duplicates,return=minimal'}, body:JSON.stringify({key:'about', value:ov.querySelector('#ab-text').value.trim()})})
+        .then(function(){ btn.disabled = false; toast('Tentang Kios tersimpan'); }).catch(function(ex){ btn.disabled = false; toast(tableMsg(ex), true); });
+    };
+    ov.querySelector('#an-list').onclick = function(e){
+      var b = e.target.closest('[data-a]'); if(!b) return;
+      var r = rows.find(function(x){ return String(x.id) === b.closest('.sl-item').dataset.id; }); if(!r) return;
+      if(b.dataset.a === 'edit') openAnnEdit(r, load);
+      else if(b.dataset.a === 'toggle') api('/rest/v1/announcements?id=eq.' + r.id, {method:'PATCH', headers:JSON_H, body:JSON.stringify({active:!r.active})}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
+      else if(b.dataset.a === 'del'){
+        if(!confirm('Hapus pengumuman ini?')) return;
+        api('/rest/v1/announcements?id=eq.' + r.id, {method:'DELETE'}).then(function(){ load(); toast('Pengumuman dihapus'); }).catch(function(ex){ toast(tableMsg(ex), true); });
+      }
+    };
+    load();
+  }
+  function openAnnEdit(existing, done){
+    var isEdit = !!existing;
+    var r = existing || {title:'', body:'', pinned:false, active:true};
+    var ov = openSheet(
+      '<h2>' + (isEdit ? 'Ubah pengumuman' : 'Pengumuman baru') + '</h2>' +
+      '<label>Judul<input id="a-title" maxlength="80" value="' + esc(r.title) + '" placeholder="Contoh: Libur hari Jumat"></label>' +
+      '<label>Isi<textarea id="a-body" rows="4" maxlength="600" placeholder="Penjelasan singkat">' + esc(r.body) + '</textarea></label>' +
+      '<label class="check"><input id="a-pin" type="checkbox"' + (r.pinned ? ' checked' : '') + '> Penting (tampil paling atas dan di Beranda)</label>' +
+      '<label class="check"><input id="a-act" type="checkbox"' + (r.active ? ' checked' : '') + '> Tampilkan di situs</label>' +
+      '<div class="actions-row"><button class="btn ghost" id="a-cancel">Batal</button><button class="btn" id="a-save">Simpan</button></div>');
+    ov.querySelector('#a-cancel').onclick = ov.close;
+    ov.querySelector('#a-save').onclick = function(){
+      var title = ov.querySelector('#a-title').value.trim();
+      if(!title){ toast('Isi judul.', true); return; }
+      var data = {title:title, body:ov.querySelector('#a-body').value.trim(), pinned:ov.querySelector('#a-pin').checked, active:ov.querySelector('#a-act').checked};
+      var btn = ov.querySelector('#a-save'); btn.disabled = true; btn.textContent = 'Menyimpan…';
+      (isEdit ? api('/rest/v1/announcements?id=eq.' + r.id, {method:'PATCH', headers:JSON_H, body:JSON.stringify(data)})
+              : api('/rest/v1/announcements', {method:'POST', headers:JSON_H, body:JSON.stringify(data)}))
+        .then(function(){ ov.close(); done(); toast('Pengumuman tersimpan'); })
+        .catch(function(ex){ btn.disabled = false; btn.textContent = 'Simpan'; toast(tableMsg(ex), true); });
+    };
+  }
+
+  /* ---- Request barang ---- */
+  function refreshRequests(){
+    api('/rest/v1/item_requests?select=id&status=eq.baru').then(function(rows){
+      var b = document.getElementById('b-rq'); if(b) b.textContent = rows.length ? 'Request Barang (' + rows.length + ' baru)' : 'Request Barang';
+    }).catch(function(){});
+  }
+  function openRequests(){
+    var ov = openSheet(
+      '<h2>Request barang</h2><p class="sub-note">Barang yang diminta pelanggan. Tandai selesai kalau sudah disediakan.</p>' +
+      '<div id="rq-list">Memuat…</div><div class="actions-row"><button class="btn ghost" id="rq-close">Tutup</button></div>');
+    var rows = [];
+    function fmt(iso){ try{ return new Date(iso).toLocaleString('id-ID', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit', timeZone:'Asia/Jakarta'}); }catch(e){ return ''; } }
+    function draw(){
+      var box = ov.querySelector('#rq-list');
+      if(!rows.length){ box.innerHTML = '<div class="empty">Belum ada request.</div>'; return; }
+      box.innerHTML = rows.map(function(r){
+        var done = r.status === 'selesai';
+        return '<div class="cm-item' + (done ? '' : ' pending') + '" data-id="' + r.id + '"><div class="cm-top"><b>' + esc(r.item) + '</b><span>' + fmt(r.created_at) + ' ' + (done ? '<span class="tago">Selesai</span>' : '<span class="tagp">Baru</span>') + '</span></div>' +
+          (r.note ? '<p>' + esc(r.note) + '</p>' : '') + (r.name ? '<p style="opacity:.6">Dari: ' + esc(r.name) + '</p>' : '') +
+          '<div class="mini"><button class="' + (done ? '' : 'ok') + '" data-a="toggle">' + (done ? 'Tandai baru' : 'Tandai selesai') + '</button><button class="danger" data-a="del">Hapus</button></div></div>';
+      }).join('');
+    }
+    function load(){
+      api('/rest/v1/item_requests?select=*&order=status.asc,id.desc&limit=100').then(function(r){ rows = r; draw(); refreshRequests(); })
+        .catch(function(ex){ ov.querySelector('#rq-list').innerHTML = '<div class="empty">' + esc(tableMsg(ex)) + '</div>'; });
+    }
+    ov.querySelector('#rq-close').onclick = ov.close;
+    ov.querySelector('#rq-list').onclick = function(e){
+      var b = e.target.closest('[data-a]'); if(!b) return;
+      var id = b.closest('.cm-item').dataset.id;
+      var r = rows.find(function(x){ return String(x.id) === id; }); if(!r) return;
+      if(b.dataset.a === 'del'){
+        if(!confirm('Hapus request ini?')) return;
+        api('/rest/v1/item_requests?id=eq.' + id, {method:'DELETE'}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
+      } else {
+        api('/rest/v1/item_requests?id=eq.' + id, {method:'PATCH', headers:JSON_H, body:JSON.stringify({status:r.status === 'selesai' ? 'baru' : 'selesai'})}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
+      }
+    };
+    load();
+  }
+
+  /* ---- Pencarian yang tidak ketemu ---- */
+  function openMisses(){
+    var ov = openSheet(
+      '<h2>Pencarian tak ketemu</h2><p class="sub-note">Kata yang dicari pelanggan tetapi tidak ada di daftar barang (juga barcode yang belum terdaftar). Yang paling sering dicari di atas. Pertimbangkan menyediakan barangnya.</p>' +
+      '<div id="ms-list">Memuat…</div><div class="actions-row"><button class="btn ghost" id="ms-close">Tutup</button><button class="btn ghost" id="ms-clear">Kosongkan semua</button></div>');
+    var rows = [];
+    function fmt(iso){ try{ return new Date(iso).toLocaleDateString('id-ID', {day:'numeric', month:'short', timeZone:'Asia/Jakarta'}); }catch(e){ return ''; } }
+    function draw(){
+      var box = ov.querySelector('#ms-list');
+      if(!rows.length){ box.innerHTML = '<div class="empty">Belum ada catatan.</div>'; return; }
+      box.innerHTML = rows.map(function(r){
+        return '<div class="cm-item" data-term="' + esc(r.term) + '"><div class="cm-top"><b>' + esc(r.term) + '</b><span>' + r.hits + 'x · ' + fmt(r.last_at) + '</span></div>' +
+          '<div class="mini"><button class="danger" data-a="del">Hapus</button></div></div>';
+      }).join('');
+    }
+    function load(){
+      api('/rest/v1/search_misses?select=*&order=hits.desc,last_at.desc&limit=100').then(function(r){ rows = r; draw(); })
+        .catch(function(ex){ ov.querySelector('#ms-list').innerHTML = '<div class="empty">' + esc(tableMsg(ex)) + '</div>'; });
+    }
+    ov.querySelector('#ms-close').onclick = ov.close;
+    ov.querySelector('#ms-clear').onclick = function(){
+      if(!rows.length || !confirm('Hapus semua catatan pencarian?')) return;
+      api('/rest/v1/search_misses?term=not.is.null', {method:'DELETE'}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
+    };
+    ov.querySelector('#ms-list').onclick = function(e){
+      var b = e.target.closest('[data-a]'); if(!b) return;
+      api('/rest/v1/search_misses?term=eq.' + encodeURIComponent(b.closest('.cm-item').dataset.term), {method:'DELETE'}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
     };
     load();
   }
