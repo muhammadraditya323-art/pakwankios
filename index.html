@@ -11,14 +11,14 @@
 <meta property="og:title" content="Kios Pak Wan">
 <meta property="og:description" content="Cek harga dan stok dari rumah, lalu pesan lewat WhatsApp. Prambon, Nganjuk.">
 <meta property="og:url" content="https://muhammadraditya323-art.github.io/PakWan/">
-<meta property="og:image" content="https://muhammadraditya323-art.github.io/PakWan/aset/og-image.png">
+<meta property="og:image" content="https://muhammadraditya323-art.github.io/PakWan/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://muhammadraditya323-art.github.io/PakWan/aset/og-image.png">
-<link rel="icon" type="image/png" href="aset/favicon.png">
-<link rel="apple-touch-icon" href="aset/apple-touch-icon.png">
-<link rel="manifest" href="aset/manifest.webmanifest">
+<meta name="twitter:image" content="https://muhammadraditya323-art.github.io/PakWan/og-image.png">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Pak Wan">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1004,7 +1004,7 @@
       return '<li'+(d===n.day?' class="today"':'')+'><span>'+DAY_NAMES[d]+'</span><span>'+fmtTime(h.o)+'–'+fmtTime(h.c)+'</span></li>';
     }).join('');
     return '<footer class="site-foot"><div class="foot-grid">' +
-      '<div><img class="foot-logo" src="aset/logo-gelap.png" alt="'+escapeHtml(STATE.shopName)+'"><p>'+escapeHtml(STATE.tagline || '')+'</p><p>'+escapeHtml(info.address)+'</p>' +
+      '<div><img class="foot-logo" src="logo-gelap.png" alt="'+escapeHtml(STATE.shopName)+'"><p>'+escapeHtml(STATE.tagline || '')+'</p><p>'+escapeHtml(info.address)+'</p>' +
         '<a href="'+escapeHtml(info.mapsUrl)+'" target="_blank" rel="noopener">Buka di Google Maps</a></div>' +
       '<div><h4>Jam buka</h4><ul class="foot-hours">'+rows+'</ul></div>' +
       '<div><h4>Cara pesan</h4><ol><li>Pilih barang, ketuk <b>Keranjang</b>.</li><li>Buka keranjang, ketuk <b>Pesan</b>, lalu masukkan kode dari kios.</li><li>Pilih bayar Tunai atau QRIS.</li><li>Kirim pesanan lewat WhatsApp.</li></ol></div>' +
@@ -1084,7 +1084,7 @@
     var cc = cartCount();
     html += '<div class="topbar"><div class="wrap"><span>'+ic('pin')+'Prambon, Nganjuk</span><span class="tb-r">Cek harga &amp; stok · pesan lewat WhatsApp</span></div></div>';
     html += '<header class="site-head"><div class="wrap head-row">' +
-      '<a class="brand" href="./" aria-label="'+escapeHtml(STATE.shopName)+'"><img class="brand-logo" src="aset/logo-utama.png" alt="'+escapeHtml(STATE.shopName)+'"></a>' +
+      '<a class="brand" href="./" aria-label="'+escapeHtml(STATE.shopName)+'"><img class="brand-logo" src="logo-utama.png" alt="'+escapeHtml(STATE.shopName)+'"></a>' +
       '<div class="search">'+ic('search')+'<input type="search" id="search-input" placeholder="Cari barang…" value="'+escapeHtml(searchQuery)+'" aria-label="Cari barang"></div>' +
       '<button class="hd-cart'+(cc?' on':'')+'" id="hd-cart" aria-label="Keranjang">'+ic('cart')+'<span class="hc-txt">'+(cc ? '<b>'+cc+' barang</b><small>'+formatRupiah(cartTotal())+'</small>' : '<small>Keranjang kosong</small>')+'</span></button>' +
     '</div></header>';
