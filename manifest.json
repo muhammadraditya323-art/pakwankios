@@ -1,0 +1,15 @@
+{
+  "name": "Kios Pak Wan",
+  "short_name": "Pak Wan",
+  "description": "Cek harga dan stok Kios Pak Wan, Prambon, Nganjuk. Pesan lewat WhatsApp.",
+  "lang": "id",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#14532D",
+  "icons": [
+    { "src": "ikon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "ikon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
