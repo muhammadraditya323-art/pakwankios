@@ -425,6 +425,12 @@
   .about-card{ background:var(--green-soft); border-radius:12px; padding:16px 18px; }
   .about-card p{ margin:0 0 10px; font-size:0.92rem; line-height:1.6; }
   .about-card p:last-child{ margin-bottom:0; }
+  .journey{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .journey figure{ margin:0; text-align:center; }
+  .journey img{ width:100%; aspect-ratio:3/4; object-fit:cover; border-radius:10px; border:1px solid var(--line); background:var(--green-soft); }
+  .journey figcaption{ margin-top:6px; font-size:0.8rem; line-height:1.35; }
+  .journey figcaption b{ display:block; color:var(--green); }
+  .journey figcaption span{ opacity:0.7; }
   .faq{ background:#fff; border:1px solid var(--line); border-radius:12px; margin-bottom:8px; }
   .faq summary{ cursor:pointer; padding:12px 14px; font:600 0.88rem 'Public Sans',sans-serif; }
   .faq p{ margin:0; padding:0 14px 13px; font-size:0.85rem; line-height:1.55; opacity:0.85; }
@@ -470,6 +476,14 @@
   .pickers .pk-l{ font-size:0.62rem; }
   .pickers .plist, .pickers .panel.right .plist{ top:calc(100% + 4px); left:0; right:auto; width:max(100%,156px); min-width:0; }
   .pickers .panel.right .plist{ left:auto; right:0; }
+
+  .dlg-ov{ position:fixed; inset:0; background:rgba(18,14,9,0.55); display:flex; align-items:center; justify-content:center; padding:20px; z-index:90; }
+  .dlg{ background:#fff; color:#1B2A22; width:100%; max-width:340px; border-radius:16px; padding:20px 18px 16px; box-shadow:0 12px 40px rgba(0,0,0,0.3); font-family:'Public Sans',system-ui,sans-serif; }
+  .dlg p{ margin:0 0 16px; font-size:0.95rem; line-height:1.5; text-align:center; }
+  .dlg-act{ display:flex; gap:10px; }
+  .dlg-act button{ flex:1; border-radius:10px; padding:11px; font:600 0.9rem 'Public Sans',sans-serif; cursor:pointer; border:1px solid rgba(27,42,34,0.2); background:#fff; color:#1B2A22; }
+  .dlg-act .dlg-ok{ background:#1F7A3E; color:#fff; border-color:#1F7A3E; }
+  .dlg-act .dlg-ok.danger{ background:#B3261E; border-color:#B3261E; }
 </style>
 </head>
 <body>
@@ -662,6 +676,27 @@
   }
 
   /* ====== UTIL ====== */
+
+  function askConfirm(msg, onYes, label, danger){
+    var ov = document.createElement('div'); ov.className = 'dlg-ov';
+    ov.innerHTML = '<div class="dlg" role="alertdialog" aria-modal="true"><p id="dlg-msg"></p><div class="dlg-act"><button type="button" id="dlg-no">Batal</button><button type="button" class="dlg-ok' + (danger ? ' danger' : '') + '" id="dlg-yes"></button></div></div>';
+    ov.querySelector('#dlg-msg').textContent = msg;
+    ov.querySelector('#dlg-yes').textContent = label || 'Ya';
+    document.body.appendChild(ov);
+    function close(){ if(ov.parentNode) ov.parentNode.removeChild(ov); }
+    ov.querySelector('#dlg-no').onclick = close;
+    ov.querySelector('#dlg-yes').onclick = function(){ close(); onYes(); };
+    ov.addEventListener('click', function(e){ if(e.target === ov) close(); });
+    ov.querySelector('#dlg-no').focus();
+  }
+  function showNote(msg){
+    var ov = document.createElement('div'); ov.className = 'dlg-ov';
+    ov.innerHTML = '<div class="dlg" role="alertdialog" aria-modal="true"><p id="dlg-msg"></p><div class="dlg-act"><button type="button" class="dlg-ok" id="dlg-yes">Mengerti</button></div></div>';
+    ov.querySelector('#dlg-msg').textContent = msg;
+    document.body.appendChild(ov);
+    ov.querySelector('#dlg-yes').onclick = function(){ ov.remove(); };
+    ov.addEventListener('click', function(e){ if(e.target === ov) ov.remove(); });
+  }
   function escapeHtml(s){
     return String(s==null?'':s).replace(/[&<>"']/g, function(c){
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
@@ -888,15 +923,26 @@
 
   /* ---- Info: Pengumuman + Tentang Kios ---- */
   function nl2br(t){ return escapeHtml(t).replace(/\n/g, '<br>'); }
+  function journeyHtml(){
+    var J = [
+      {src:'kios-1.jpg', yr:'1998 – 2020', lb:'Lokasi pertama', alt:'Kios Pak Wan di lokasi pertama, 1998 sampai 2020'},
+      {src:'kios-2.jpg', yr:'2020 – 2026', lb:'Lokasi kedua', alt:'Kios Pak Wan di lokasi kedua, 2020 sampai 2026'},
+      {src:'kios-3.jpg', yr:'2026 – sekarang', lb:'Lokasi saat ini', alt:'Kios Pak Wan di lokasi sekarang, sejak 2026'}
+    ];
+    return '<h2 class="sec-title"><span>Perjalanan Kios</span></h2><div class="journey">' + J.map(function(x){
+      return '<figure><img src="'+x.src+'" alt="'+escapeHtml(x.alt)+'" loading="lazy"><figcaption><b>'+x.yr+'</b><span>'+x.lb+'</span></figcaption></figure>';
+    }).join('') + '</div>';
+  }
   function infoPage(){
     var st = openStatus(), info = STATE.info;
     var list = ANNS.length ? ANNS.map(function(a){
       return '<article class="an-item'+(a.pinned?' pinned':'')+'"><div class="an-head"><b>'+escapeHtml(a.title)+'</b>'+(a.pinned?'<span class="an-pin">Penting</span>':'')+'<span>'+fmtDate(a.created_at)+'</span></div>'+(a.body ? '<p>'+nl2br(a.body)+'</p>' : '')+'</article>';
     }).join('') : '<div class="empty">Belum ada pengumuman.</div>';
-    var about = (ABOUT || '').trim() || ('Kios Pak Wan adalah kios kebutuhan sehari-hari di Prambon, Nganjuk. Cek harga dan stok dari rumah, lalu pesan lewat WhatsApp atau datang langsung ke kios.');
+    var about = (ABOUT || '').trim() || ('Kios Pak Wan berdiri sejak 1998 dan dikelola oleh Bapak Ridwan, yang akrab disapa Pak Wan. Dalam perjalanan hampir tiga dekade, kios ini sudah tiga kali berpindah tempat: dari 1998 sampai 2020 di lokasi pertama, dari 2020 sampai 2026 di lokasi kedua, dan sejak 2026 di lokasi yang sekarang. Meski berpindah, kami tetap melayani warga Desa Sanggrahan dan sekitarnya dengan berbagai kebutuhan sehari-hari. Kami ingin belanja terasa dekat, sederhana, dan tidak memberatkan. Karena itu, kami memegang satu semboyan: Belanja Mudah, Harga Bersahabat.');
     var paras = about.split(/\n\s*\n/).map(function(p){ return '<p>'+nl2br(p.trim())+'</p>'; }).join('');
     return '<section class="sv-page"><h2 class="sec-title"><span>Pengumuman</span></h2><div class="an-list">'+list+'</div>' +
       '<h2 class="sec-title"><span>Tentang Kios</span></h2><div class="about-card">'+paras+'</div>' +
+      journeyHtml() +
       '<div class="sv-loc"><div class="status '+(st.open?'open':'closed')+'"><span class="dot"></span>'+escapeHtml(st.text)+'</div>' +
         '<div class="info-row">'+ic('pin')+'<span>'+escapeHtml(info.address)+'</span></div>' +
         '<a class="map-btn" href="'+escapeHtml(info.mapsUrl)+'" target="_blank" rel="noopener">Buka di Google Maps</a></div></section>';
@@ -1327,8 +1373,7 @@
         ov.querySelector('#ct-kembali').textContent = kembaliText();
       });
       ov.querySelector('#ct-clear').onclick = function(){
-        if(!confirm('Kosongkan semua barang di keranjang?')) return;
-        cart = {}; bayarState = ''; render(); paint();
+        askConfirm('Kosongkan semua barang di keranjang?', function(){ cart = {}; bayarState = ''; render(); paint(); }, 'Kosongkan', true);
       };
       ov.querySelector('#ct-order').onclick = function(){ close(); openOrderModal(parseInt(bayarState || '0', 10) || 0); };
     }
@@ -1363,7 +1408,7 @@
       items.push({name:p.name, qty:cart[id], price:p.price, sub:sub});
     }
     if(!items.length){
-      alert('Daftar belanja hanya berisi rokok. Rokok tidak bisa dipesan lewat situs; hitung dan beli langsung di kios.');
+      showNote('Daftar belanja hanya berisi rokok. Rokok tidak bisa dipesan lewat situs; hitung dan beli langsung di kios.');
       return;
     }
     var code = generateOrderCode();
@@ -1485,133 +1530,4 @@
       overlay.querySelector('#calc-bayar').value = '';
       recalc(); render();
     };
-    overlay.querySelector('#calc-close').onclick = function(){ overlay.remove(); };
-    recalc();
-  }
-
-  /* ====== SCAN BARCODE (pelanggan) ====== */
-  function loadZxing(){
-    if(window.ZXing) return Promise.resolve();
-    return new Promise(function(resolve, reject){
-      var sc = document.createElement('script');
-      sc.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
-      sc.onload = resolve; sc.onerror = function(){ reject(new Error('zxing')); };
-      document.head.appendChild(sc);
-    });
-  }
-  function handleScan(code, el, totalEl){
-    var p = STATE.products.find(function(x){ return x.barcode === code; });
-    if(!p){ el.className = 'sc-result bad'; el.textContent = 'Barang belum terdaftar (' + code + ')'; rpc('log_search_miss', {p_term:'barcode ' + code}).catch(function(){}); return; }
-    if(p.soldOut){ el.className = 'sc-result bad'; el.textContent = p.name + ' — stok habis'; return; }
-    setQty(p.id, (cart[p.id] || 0) + 1);
-    render();
-    el.className = 'sc-result ok';
-    el.textContent = p.name + ' — ' + formatRupiah(p.price) + ' (×' + cart[p.id] + ')' + (p.noOrder ? ' · hanya hitungan, tidak ikut pesanan' : '');
-    if(totalEl) totalEl.textContent = cartCount() + ' barang · ' + formatRupiah(cartTotal());
-  }
-  function openScanner(){
-    var view = document.createElement('div'); view.className = 'scan-view';
-    view.innerHTML =
-      '<video playsinline muted autoplay></video><div class="scan-frame"></div>' +
-      '<div class="scan-bottom">' +
-        '<div class="sc-result" id="sc-result">Arahkan kamera ke barcode barang</div>' +
-        '<div class="sc-total" id="sc-total">' + cartCount() + ' barang · ' + formatRupiah(cartTotal()) + '</div>' +
-        '<div class="sc-manual"><input id="sc-manual" inputmode="numeric" placeholder="Atau ketik kode barcode"><button id="sc-ok">OK</button></div>' +
-        '<button class="sc-done" id="sc-done">Selesai</button>' +
-      '</div>';
-    document.body.appendChild(view);
-    var video = view.querySelector('video'), resultEl = view.querySelector('#sc-result'), totalEl = view.querySelector('#sc-total');
-    var stream = null, timer = null, zxReader = null, finished = false, lastCode = '', lastAt = 0;
-
-    function stop(){
-      finished = true;
-      if(timer) clearInterval(timer);
-      if(zxReader){ try{ zxReader.reset(); }catch(e){} }
-      if(stream){ stream.getTracks().forEach(function(t){ t.stop(); }); }
-      view.remove();
-    }
-    function onCode(code){
-      code = String(code).trim(); if(!code || finished) return;
-      var now = Date.now();
-      if(code === lastCode && now - lastAt < 2500) return; // cegah terhitung dobel
-      lastCode = code; lastAt = now;
-      try{ if(navigator.vibrate) navigator.vibrate(60); }catch(e){}
-      handleScan(code, resultEl, totalEl);
-    }
-    view.querySelector('#sc-done').onclick = stop;
-    view.querySelector('#sc-ok').onclick = function(){
-      var inp = view.querySelector('#sc-manual'); var v = inp.value.trim();
-      if(v){ lastCode = ''; onCode(v); inp.value = ''; }
-    };
-    view.querySelector('#sc-manual').addEventListener('keydown', function(e){
-      if(e.key === 'Enter'){ view.querySelector('#sc-ok').click(); }
-    });
-
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      resultEl.className = 'sc-result bad';
-      resultEl.textContent = 'Kamera tidak tersedia di browser ini. Ketik kode barcode di bawah.';
-      return;
-    }
-    var formats = ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf'];
-    var useNative = ('BarcodeDetector' in window);
-    var ready = (useNative && BarcodeDetector.getSupportedFormats)
-      ? BarcodeDetector.getSupportedFormats().then(function(sup){ formats = formats.filter(function(f){ return sup.indexOf(f) !== -1; }); useNative = formats.length > 0; }).catch(function(){})
-      : Promise.resolve();
-    ready.then(function(){
-      if(finished) return;
-      if(useNative){
-        return navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}, audio:false}).then(function(s){
-          if(finished){ s.getTracks().forEach(function(t){ t.stop(); }); return; }
-          stream = s; video.srcObject = s; video.play().catch(function(){});
-          var det = new BarcodeDetector({formats:formats}), busy = false;
-          timer = setInterval(function(){
-            if(busy || finished || video.readyState < 2) return;
-            busy = true;
-            det.detect(video).then(function(r){ if(r && r.length) onCode(r[0].rawValue); }).catch(function(){}).then(function(){ busy = false; });
-          }, 250);
-        });
-      }
-      resultEl.textContent = 'Memuat pemindai…';
-      return loadZxing().then(function(){
-        if(finished) return;
-        zxReader = new ZXing.BrowserMultiFormatReader();
-        resultEl.textContent = 'Arahkan kamera ke barcode barang';
-        return zxReader.decodeFromConstraints({video:{facingMode:'environment'}}, video, function(result){ if(result) onCode(result.getText()); });
-      });
-    }).catch(function(ex){
-      if(finished) return;
-      resultEl.className = 'sc-result bad';
-      resultEl.textContent = (ex && ex.name === 'NotAllowedError')
-        ? 'Izin kamera ditolak. Aktifkan izin kamera di pengaturan browser, atau ketik kode di bawah.'
-        : 'Pemindai tidak bisa dibuka. Ketik kode barcode di bawah.';
-    });
-  }
-
-  function setView(v){
-    view = (v === 'comments' || v === 'services' || v === 'info') ? v : 'home';
-    openPanel = null;
-    var hash = view === 'comments' ? '#komentar' : view === 'services' ? '#layanan' : view === 'info' ? '#info' : '';
-    try{ history.replaceState(null, '', location.pathname + location.search + hash); }catch(e){}
-    if(view === 'comments' && cmStatus !== 'loading'){ loadComments().then(render); }
-    render(); window.scrollTo(0, 0);
-  }
-  /* ====== MULAI ====== */
-  function start(){
-    if(location.hash === '#komentar'){ view = 'comments'; loadComments().then(render); }
-    else if(location.hash === '#layanan'){ view = 'services'; }
-    else if(location.hash === '#info'){ view = 'info'; }
-    loadCart();
-    render(); // tampilkan info toko dulu, barang menyusul
-    Promise.all([loadProducts(), checkQris(), loadSlides(), loadServices(), loadInfo()]).then(render);
-    document.addEventListener('click', function(e){
-      if(openPanel && !e.target.closest('.panel')){ openPanel = null; render(); }
-    });
-    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if(!reduce) setInterval(function(){ if(!slidePaused && !document.hidden) slideGo(slideIdx + 1); }, SLIDE_MS);
-  }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
-  else start();
-})();
-</script>
-
-</body></html>
+    overlay.querySelector

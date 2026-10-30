@@ -145,6 +145,14 @@
   .st-badge{ font:700 0.64rem 'Public Sans',sans-serif; padding:2px 8px; border-radius:999px; background:var(--gold); color:#2A1B08; }
   .cm-top .stars-t{ color:#B07F00; letter-spacing:1px; }
   .tago{ font:700 0.64rem 'Public Sans',sans-serif; padding:2px 8px; border-radius:999px; background:var(--green-soft); color:var(--green); }
+
+  .dlg-ov{ position:fixed; inset:0; background:rgba(18,14,9,0.55); display:flex; align-items:center; justify-content:center; padding:20px; z-index:90; }
+  .dlg{ background:#fff; color:#1B2A22; width:100%; max-width:340px; border-radius:16px; padding:20px 18px 16px; box-shadow:0 12px 40px rgba(0,0,0,0.3); font-family:'Public Sans',system-ui,sans-serif; }
+  .dlg p{ margin:0 0 16px; font-size:0.95rem; line-height:1.5; text-align:center; }
+  .dlg-act{ display:flex; gap:10px; }
+  .dlg-act button{ flex:1; border-radius:10px; padding:11px; font:600 0.9rem 'Public Sans',sans-serif; cursor:pointer; border:1px solid rgba(27,42,34,0.2); background:#fff; color:#1B2A22; }
+  .dlg-act .dlg-ok{ background:#1F7A3E; color:#fff; border-color:#1F7A3E; }
+  .dlg-act .dlg-ok.danger{ background:#B3261E; border-color:#B3261E; }
 </style>
 </head>
 <body>
@@ -163,6 +171,27 @@
   var app = document.getElementById('app');
 
   /* ====== UTIL ====== */
+
+  function askConfirm(msg, onYes, label, danger){
+    var ov = document.createElement('div'); ov.className = 'dlg-ov';
+    ov.innerHTML = '<div class="dlg" role="alertdialog" aria-modal="true"><p id="dlg-msg"></p><div class="dlg-act"><button type="button" id="dlg-no">Batal</button><button type="button" class="dlg-ok' + (danger ? ' danger' : '') + '" id="dlg-yes"></button></div></div>';
+    ov.querySelector('#dlg-msg').textContent = msg;
+    ov.querySelector('#dlg-yes').textContent = label || 'Ya';
+    document.body.appendChild(ov);
+    function close(){ if(ov.parentNode) ov.parentNode.removeChild(ov); }
+    ov.querySelector('#dlg-no').onclick = close;
+    ov.querySelector('#dlg-yes').onclick = function(){ close(); onYes(); };
+    ov.addEventListener('click', function(e){ if(e.target === ov) close(); });
+    ov.querySelector('#dlg-no').focus();
+  }
+  function showNote(msg){
+    var ov = document.createElement('div'); ov.className = 'dlg-ov';
+    ov.innerHTML = '<div class="dlg" role="alertdialog" aria-modal="true"><p id="dlg-msg"></p><div class="dlg-act"><button type="button" class="dlg-ok" id="dlg-yes">Mengerti</button></div></div>';
+    ov.querySelector('#dlg-msg').textContent = msg;
+    document.body.appendChild(ov);
+    ov.querySelector('#dlg-yes').onclick = function(){ ov.remove(); };
+    ov.addEventListener('click', function(e){ if(e.target === ov) ov.remove(); });
+  }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function rp(n){ return 'Rp ' + Number(n||0).toLocaleString('id-ID'); }
   function slug(t){ return String(t).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'barang'; }
@@ -444,9 +473,10 @@
       }).catch(function(ex){ prev.textContent = 'Gagal'; toast(errMsg(ex), true); });
     });
     ov.querySelector('#q-del').onclick = function(){
-      if(!confirm('Hapus gambar QRIS?')) return;
-      api('/storage/v1/object/foto/qris.png', {method:'DELETE'}).then(function(){ ov.querySelector('#q-prev').textContent = 'Belum ada QRIS'; ov.querySelector('#q-del').style.display = 'none'; toast('QRIS dihapus'); })
-        .catch(function(ex){ toast(errMsg(ex), true); });
+      askConfirm('Hapus gambar QRIS?', function(){
+        api('/storage/v1/object/foto/qris.png', {method:'DELETE'}).then(function(){ ov.querySelector('#q-prev').textContent = 'Belum ada QRIS'; ov.querySelector('#q-del').style.display = 'none'; toast('QRIS dihapus'); })
+          .catch(function(ex){ toast(errMsg(ex), true); });
+      }, 'Hapus', true);
     };
   }
 
@@ -485,8 +515,7 @@
       else if(b.dataset.a === 'toggle'){
         api('/rest/v1/slides?id=eq.' + r.id, {method:'PATCH', headers:JSON_H, body:JSON.stringify({active:!r.active})}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
       } else if(b.dataset.a === 'del'){
-        if(!confirm('Hapus slide ini?')) return;
-        api('/rest/v1/slides?id=eq.' + r.id, {method:'DELETE'}).then(function(){ if(r.image) deletePhoto(r.image); load(); toast('Slide dihapus'); }).catch(function(ex){ toast(tableMsg(ex), true); });
+        askConfirm('Hapus slide ini?', function(){ api('/rest/v1/slides?id=eq.' + r.id, {method:'DELETE'}).then(function(){ if(r.image) deletePhoto(r.image); load(); toast('Slide dihapus'); }).catch(function(ex){ toast(tableMsg(ex), true); }); }, 'Hapus', true);
       }
     };
     load();
@@ -583,8 +612,7 @@
       else if(b.dataset.a === 'toggle'){
         api('/rest/v1/services?id=eq.' + r.id, {method:'PATCH', headers:JSON_H, body:JSON.stringify({active:!r.active})}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
       } else if(b.dataset.a === 'del'){
-        if(!confirm('Hapus layanan ini?')) return;
-        api('/rest/v1/services?id=eq.' + r.id, {method:'DELETE'}).then(function(){ load(); toast('Layanan dihapus'); }).catch(function(ex){ toast(tableMsg(ex), true); });
+        askConfirm('Hapus layanan ini?', function(){ api('/rest/v1/services?id=eq.' + r.id, {method:'DELETE'}).then(function(){ load(); toast('Layanan dihapus'); }).catch(function(ex){ toast(tableMsg(ex), true); }); }, 'Hapus', true);
       }
     };
     load();
@@ -647,8 +675,7 @@
       var b = e.target.closest('[data-a]'); if(!b) return;
       var id = b.closest('.cm-item').dataset.id;
       if(b.dataset.a === 'del'){
-        if(!confirm('Hapus komentar ini?')) return;
-        api('/rest/v1/comments?id=eq.' + id, {method:'DELETE'}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
+        askConfirm('Hapus komentar ini?', function(){ api('/rest/v1/comments?id=eq.' + id, {method:'DELETE'}).then(load).catch(function(ex){ toast(tableMsg(ex), true); }); }, 'Hapus', true);
       } else {
         api('/rest/v1/comments?id=eq.' + id, {method:'PATCH', headers:JSON_H, body:JSON.stringify({approved:b.dataset.a === 'ok'})}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
       }
@@ -693,8 +720,7 @@
       if(b.dataset.a === 'edit') openAnnEdit(r, load);
       else if(b.dataset.a === 'toggle') api('/rest/v1/announcements?id=eq.' + r.id, {method:'PATCH', headers:JSON_H, body:JSON.stringify({active:!r.active})}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
       else if(b.dataset.a === 'del'){
-        if(!confirm('Hapus pengumuman ini?')) return;
-        api('/rest/v1/announcements?id=eq.' + r.id, {method:'DELETE'}).then(function(){ load(); toast('Pengumuman dihapus'); }).catch(function(ex){ toast(tableMsg(ex), true); });
+        askConfirm('Hapus pengumuman ini?', function(){ api('/rest/v1/announcements?id=eq.' + r.id, {method:'DELETE'}).then(function(){ load(); toast('Pengumuman dihapus'); }).catch(function(ex){ toast(tableMsg(ex), true); }); }, 'Hapus', true);
       }
     };
     load();
@@ -754,8 +780,7 @@
       var id = b.closest('.cm-item').dataset.id;
       var r = rows.find(function(x){ return String(x.id) === id; }); if(!r) return;
       if(b.dataset.a === 'del'){
-        if(!confirm('Hapus request ini?')) return;
-        api('/rest/v1/item_requests?id=eq.' + id, {method:'DELETE'}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
+        askConfirm('Hapus request ini?', function(){ api('/rest/v1/item_requests?id=eq.' + id, {method:'DELETE'}).then(load).catch(function(ex){ toast(tableMsg(ex), true); }); }, 'Hapus', true);
       } else {
         api('/rest/v1/item_requests?id=eq.' + id, {method:'PATCH', headers:JSON_H, body:JSON.stringify({status:r.status === 'selesai' ? 'baru' : 'selesai'})}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
       }
@@ -784,8 +809,8 @@
     }
     ov.querySelector('#ms-close').onclick = ov.close;
     ov.querySelector('#ms-clear').onclick = function(){
-      if(!rows.length || !confirm('Hapus semua catatan pencarian?')) return;
-      api('/rest/v1/search_misses?term=not.is.null', {method:'DELETE'}).then(load).catch(function(ex){ toast(tableMsg(ex), true); });
+      if(!rows.length) return;
+      askConfirm('Hapus semua catatan pencarian?', function(){ api('/rest/v1/search_misses?term=not.is.null', {method:'DELETE'}).then(load).catch(function(ex){ toast(tableMsg(ex), true); }); }, 'Hapus semua', true);
     };
     ov.querySelector('#ms-list').onclick = function(e){
       var b = e.target.closest('[data-a]'); if(!b) return;
@@ -875,12 +900,13 @@
     ov.querySelector('#e-cancel').onclick = ov.close;
     if(isEdit){
       ov.querySelector('#e-del').onclick = function(){
-        if(!confirm('Hapus "' + p.name + '"? Tidak bisa dibatalkan.')) return;
-        removeProduct(p.id).then(function(){
-          if(p.photo) deletePhoto(p.photo);
-          products = products.filter(function(x){ return x.id !== p.id; });
-          ov.close(); renderMain(); toast('Barang dihapus');
-        }).catch(function(ex){ toast(errMsg(ex), true); });
+        askConfirm('Hapus "' + p.name + '"? Tidak bisa dibatalkan.', function(){
+          removeProduct(p.id).then(function(){
+            if(p.photo) deletePhoto(p.photo);
+            products = products.filter(function(x){ return x.id !== p.id; });
+            ov.close(); renderMain(); toast('Barang dihapus');
+          }).catch(function(ex){ toast(errMsg(ex), true); });
+        }, 'Hapus', true);
       };
     }
     ov.querySelector('#e-save').onclick = function(){
@@ -958,17 +984,18 @@
     ov.querySelector('#bk-cancel').onclick = ov.close;
     ov.querySelector('#bk-apply').onclick = function(){
       if(!changes.length) return;
-      if(!confirm('Ubah harga ' + changes.length + ' barang?')) return;
-      var btn = ov.querySelector('#bk-apply'); btn.disabled = true; btn.textContent = 'Menyimpan…';
-      var done = 0, failed = 0, queue = changes.slice();
-      function worker(){
-        var c = queue.shift(); if(!c) return Promise.resolve();
-        return patchProduct(c.p.id, {price:c.to}).then(function(row){ Object.assign(c.p, row); done++; }).catch(function(){ failed++; }).then(worker);
-      }
-      Promise.all([worker(), worker(), worker()]).then(function(){
-        ov.close(); renderMain();
-        toast(failed ? (done + ' berhasil, ' + failed + ' gagal') : (done + ' harga diperbarui'), !!failed);
-      });
+      askConfirm('Ubah harga ' + changes.length + ' barang?', function(){
+        var btn = ov.querySelector('#bk-apply'); btn.disabled = true; btn.textContent = 'Menyimpan…';
+        var done = 0, failed = 0, queue = changes.slice();
+        function worker(){
+          var c = queue.shift(); if(!c) return Promise.resolve();
+          return patchProduct(c.p.id, {price:c.to}).then(function(row){ Object.assign(c.p, row); done++; }).catch(function(){ failed++; }).then(worker);
+        }
+        Promise.all([worker(), worker(), worker()]).then(function(){
+          ov.close(); renderMain();
+          toast(failed ? (done + ' berhasil, ' + failed + ' gagal') : (done + ' harga diperbarui'), !!failed);
+        });
+      }, 'Ubah harga');
     };
     calc();
   }
