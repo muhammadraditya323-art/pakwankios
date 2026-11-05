@@ -567,6 +567,28 @@
   .hist-items{ font-size:0.8rem; opacity:0.75; margin:4px 0 8px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
   .hist-buy{ border:1.5px solid var(--green); background:#fff; color:var(--green); border-radius:999px; padding:7px 16px; font:700 0.82rem 'Public Sans',sans-serif; cursor:pointer; }
   .hist-clear{ display:block; border:0; background:transparent; color:var(--red); font-size:0.78rem; margin-top:10px; cursor:pointer; text-decoration:underline; padding:0; }
+
+  /* ===== v4: beranda baru ===== */
+  .info-strip.slim{ grid-template-columns:1fr; }
+  .info-strip.slim .info-cell{ border:0; }
+  a.promo{ text-decoration:none; }
+  .promo.p5{ background:linear-gradient(135deg,#F7CB45,#F2B200); color:#2A1B08; }
+  .promo.p6{ background:linear-gradient(135deg,#1F7A3E,#14532D); }
+  .pickers{ margin-top:22px; }
+  .rate-chip{ position:absolute; top:7px; left:7px; z-index:2; display:inline-flex; align-items:center; gap:3px; border:0; background:rgba(255,255,255,0.95); border-radius:999px; padding:2px 7px 2px 5px; font:700 0.68rem 'Public Sans',sans-serif; color:var(--ink); box-shadow:0 1px 4px rgba(0,0,0,0.2); cursor:pointer; }
+  .rate-chip.na{ color:#6b7a70; font-weight:600; }
+  .thumb .rate-chip svg{ width:12px; height:12px; opacity:1; }
+  .hrs-list{ list-style:none; margin:10px 0 4px; padding:0; }
+  .hrs-list li{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:0.92rem; }
+  .hrs-list li.today{ font-weight:700; color:var(--green); }
+  .qris-dl{ text-align:center; margin:4px 0 6px; }
+  .dl-qris{ border:1.5px solid var(--green); background:#fff; color:var(--green); border-radius:999px; padding:9px 20px; font:700 0.88rem 'Public Sans',sans-serif; cursor:pointer; }
+  .dl-qris:disabled{ opacity:0.6; }
+  .vp-name{ display:flex; align-items:center; gap:10px; }
+  .vp-img{ width:44px; height:44px; border-radius:8px; object-fit:cover; flex:none; border:1px solid var(--line); background:#fff; }
+  .pd-vchip{ border:1.5px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-family:inherit; }
+  .pd-vchip img{ width:26px; height:26px; border-radius:50%; object-fit:cover; flex:none; }
+  .pd-vchip.on{ border-color:var(--green); background:#fff; color:var(--green-deep); font-weight:700; }
 </style>
 </head>
 <body>
@@ -604,35 +626,54 @@
   var missTimer = null, missLogged = {}, PORTRAIT = {};
   var CART_KEY = 'kiosPakWan.cart.v1';
   var BASE_TITLE = document.title;
+  var loadErr = '';
   var VSEP = '||';
-  var detailId = null, PC = {}, pdStars = 0, pdText = '', pdMsg = '';
+  var detailId = null, PC = {}, pdStars = 0, pdText = '', pdMsg = '', pdVar = '';
 
   /* ====== DATA (Supabase) ====== */
   function photoUrl(name){
     return SUPABASE_URL + '/storage/v1/object/public/foto/' + encodeURIComponent(name);
   }
+  function variantPhoto(v){
+    v = (v == null ? '' : String(v)).trim();
+    if(!v) return null;
+    return /^(https?:\/\/|data:image\/)/i.test(v) ? v : photoUrl(v);
+  }
   function parseVariants(raw){
     var out = [];
-    String(raw == null ? '' : raw).split(/[\n,;]+/).forEach(function(t){
-      t = t.trim(); if(!t) return;
-      var m = t.match(/^(.*?)\s*[:=]\s*(\d{3,9})$/);
-      var name = (m ? m[1] : t).trim().slice(0, 40);
+    function add(name, price, photo){
+      name = String(name == null ? '' : name).trim().slice(0, 40);
       if(!name) return;
       if(out.some(function(v){ return v.name.toLowerCase() === name.toLowerCase(); })) return;
-      out.push({name: name, price: m ? parseInt(m[2], 10) : null});
-    });
+      var pr = parseInt(price, 10);
+      out.push({name: name, price: pr > 0 ? pr : null, photo: variantPhoto(photo)});
+    }
+    var arr = null;
+    if(Array.isArray(raw)) arr = raw;
+    else if(typeof raw === 'string' && /^\s*\[/.test(raw)){ try{ arr = JSON.parse(raw); }catch(e){ arr = null; } }
+    if(arr){
+      arr.forEach(function(it){ if(it && typeof it === 'object') add(it.name, it.price, it.photo); else add(it, null, null); });
+    } else {
+      String(raw == null ? '' : raw).split(/[\n,;]+/).forEach(function(t){
+        t = t.trim(); if(!t) return;
+        var m = t.match(/^(.*?)\s*[:=]\s*(\d{3,9})$/);
+        add(m ? m[1] : t, m ? m[2] : null, null);
+      });
+    }
     return out.slice(0, 30);
   }
   function normalize(r){
+    var vs = parseVariants(r.variants), ph = r.photo ? photoUrl(r.photo) : null;
+    if(!ph){ var vp = vs.find(function(v){ return v.photo; }); if(vp) ph = vp.photo; }
     return {
       id: String(r.id), name: r.name || '', price: r.price || 0,
       category: r.category || 'Lainnya', description: r.description || '',
-      photo: r.photo ? photoUrl(r.photo) : null,
+      photo: ph,
       barcode: r.barcode || null,
       noOrder: /^\s*rokok\s*$/i.test(String(r.category || '')), // rokok: hanya info harga
       isNew: r.is_new === true, best: r.is_best === true, soldOut: r.sold_out === true,
       rating: Number(r.rating_avg) || 0, ratingCount: parseInt(r.rating_count, 10) || 0,
-      variants: parseVariants(r.variants)
+      variants: vs
     };
   }
   function applyProducts(list){
@@ -665,7 +706,9 @@
         loadStatus = 'ok'; fromCache = false;
         try{ localStorage.setItem(CACHE_KEY, JSON.stringify(list)); }catch(e){}
       })
-      .catch(function(){
+      .catch(function(e){
+        loadErr = (e && e.status) ? 'HTTP ' + e.status : String((e && e.message) || e || 'error');
+        try{ console.error('loadProducts', e); }catch(x){}
         var cached = null;
         try{ cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); }catch(e){}
         if(cached && cached.length){ applyProducts(cached); loadStatus = 'ok'; fromCache = true; }
@@ -1037,20 +1080,30 @@
     if(n.min < t.o) return {open:false, text:'Tutup · buka hari ini pukul ' + fmtTime(t.o)};
     return {open:false, text:'Tutup · buka besok pukul ' + fmtTime(H[(n.day+1)%7].o)};
   }
-  function infoCard(){
-    var info = STATE.info, st = openStatus(), n = jakartaNow();
-    var today = info.hours[n.day];
+  function statusCard(){
+    var st = openStatus(), n = jakartaNow(), today = STATE.info.hours[n.day];
+    return '<section class="info-strip slim" aria-label="Status buka">' +
+      '<div class="info-cell"><div class="status '+(st.open?'open':'closed')+'"><span class="dot"></span>'+escapeHtml(st.text)+'</div>' +
+        '<div class="info-sub">Hari ini ('+DAY_NAMES[n.day]+'): '+fmtTime(today.o)+' – '+fmtTime(today.c)+'</div></div>' +
+    '</section>';
+  }
+  function openHoursModal(){
+    var info = STATE.info, n = jakartaNow(), st = openStatus();
     var rows = [1,2,3,4,5,6,0].map(function(d){
       var h = info.hours[d];
       return '<li'+(d===n.day?' class="today"':'')+'><span>'+DAY_NAMES[d]+'</span><span>'+fmtTime(h.o)+' – '+fmtTime(h.c)+'</span></li>';
     }).join('');
-    return '<section class="info-strip" aria-label="Lokasi dan jam buka">' +
-      '<div class="info-cell"><div class="status '+(st.open?'open':'closed')+'"><span class="dot"></span>'+escapeHtml(st.text)+'</div>' +
-        '<div class="info-sub">Hari ini ('+DAY_NAMES[n.day]+'): '+fmtTime(today.o)+' – '+fmtTime(today.c)+'</div>' +
-        '<details class="hours"><summary>Jam buka seminggu</summary><ul>'+rows+'</ul></details></div>' +
-      '<div class="info-cell"><div class="info-row">'+ic('pin')+'<span>'+escapeHtml(info.address)+(info.plusCode?'<br><small>Kode plus: '+escapeHtml(info.plusCode)+'</small>':'')+'</span></div></div>' +
-      '<div class="info-cell info-act"><a class="map-btn" href="'+escapeHtml(info.mapsUrl)+'" target="_blank" rel="noopener">Buka di Google Maps</a></div>' +
-    '</section>';
+    var ov = document.createElement('div'); ov.className = 'overlay';
+    ov.innerHTML = '<div class="sheet"><h2>Jadwal buka</h2><div class="status '+(st.open?'open':'closed')+'"><span class="dot"></span>'+escapeHtml(st.text)+'</div>' +
+      '<ul class="hrs-list">'+rows+'</ul><div class="sheet-actions"><button class="primary" id="hr-close">Tutup</button></div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#hr-close').onclick = function(){ ov.remove(); };
+    ov.addEventListener('click', function(e){ if(e.target === ov) ov.remove(); });
+  }
+  function showFavorites(){
+    activeCat = '__fav'; searchQuery = ''; openPanel = null;
+    render();
+    var t = document.querySelector('.all-title'); if(t) t.scrollIntoView();
   }
 
   /* ====== TAMPILAN ====== */
@@ -1071,21 +1124,19 @@
       '</div>';
     else action = '<div class="qty-row"><button class="buy-btn" data-action="buy" data-id="'+p.id+'">' + (p.noOrder ? ic('cart') + 'Hitung' : 'Beli') + '</button></div>';
     if(p.noOrder && !p.soldOut) action += '<div class="noorder-note">Hanya untuk hitungan · tidak ikut pesanan</div>';
-    var rate = '<button class="rate-row" data-action="reviews" data-id="'+p.id+'" aria-label="Lihat ulasan '+escapeHtml(p.name)+'">' + starsHtml(p.rating) +
-      '<span class="rate-n">' + (p.ratingCount ? p.rating.toFixed(1) + ' (' + p.ratingCount + ')' : 'Beri ulasan') + '</span></button>';
-    var favOn = isFav(p.id);
+    var rate = '<button type="button" class="rate-chip'+(p.ratingCount ? '' : ' na')+'" data-action="reviews" data-id="'+p.id+'" aria-label="Rating '+escapeHtml(p.name)+': '+(p.ratingCount ? p.rating.toFixed(1) : 'belum ada')+'">' +
+      starSvg(p.ratingCount > 0) + '<span>' + (p.ratingCount ? p.rating.toFixed(1) : 'N/A') + '</span></button>';
     return '<article class="card'+(p.soldOut?' soldout':'')+'" data-pid="'+p.id+'">' +
-      '<button type="button" class="fav-btn'+(favOn?' on':'')+'" data-action="fav" data-id="'+p.id+'" aria-pressed="'+favOn+'" aria-label="'+(favOn?'Hapus dari favorit: ':'Tambah ke favorit: ')+escapeHtml(p.name)+'">'+ic('heart')+'</button>' +
       '<div class="thumb">' +
         (p.photo ? '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name)+'" loading="lazy">' : placeholderIcon()) +
+        rate +
         (badges ? '<div class="badges">'+badges+'</div>' : '') +
         (p.soldOut ? '<div class="soldout-mask">HABIS</div>' : '') +
       '</div>' +
       '<div class="info">' +
         '<h3><a class="pd-link" href="#barang-'+p.id+'" data-open="'+p.id+'">'+escapeHtml(p.name)+'</a></h3>' +
-        '<div class="price">'+formatRupiah(p.price)+'</div>' +
+        '<div class="price">'+priceRangeText(p)+'</div>' +
         (hasVar ? '<div class="vr-note">'+p.variants.length+' varian</div>' : '') +
-        rate +
       '</div>' + action +
     '</article>';
   }
@@ -1100,14 +1151,17 @@
   function highlightStrips(){
     var news = STATE.products.filter(function(p){ return p.isNew; });
     var bests = STATE.products.filter(function(p){ return p.best; });
-    return sectionRow('Favorit Anda', 'fav', favProducts(), '__fav') + sectionRow('Stok Baru', 'new', news, '__new') + '__PROMO__' + sectionRow('Terlaris', 'best', bests, '__best');
+    return sectionRow('Stok Baru', 'new', news, '__new') + '__PROMO__' + sectionRow('Terlaris', 'best', bests, '__best');
   }
   function promoTiles(){
+    var info = STATE.info, fc = favProducts().length;
     return '<section class="promos" aria-label="Pintasan">' +
       '<button class="promo p1" data-go="scan">'+ic('scan')+'<span><b>Scan barcode</b><small>Cek harga &amp; masukkan ke daftar belanja</small></span></button>' +
       '<button class="promo p2" data-go="calc">'+ic('calc')+'<span><b>Kalkulator belanja</b><small>Hitung total &amp; kembalian</small></span></button>' +
-      '<button class="promo p3" data-go="best">'+ic('flame')+'<span><b>Barang terlaris</b><small>Yang paling sering dicari</small></span></button>' +
-      (STATE.qris ? '<button class="promo p4" data-go="qris">'+ic('qr')+'<span><b>Bayar QRIS</b><small>Tampilkan kode QRIS kios</small></span></button>' : '') +
+      (STATE.qris ? '<button class="promo p4" data-go="qris">'+ic('qr')+'<span><b>Bayar QRIS</b><small>Tampilkan &amp; unduh kode QRIS</small></span></button>' : '') +
+      '<button class="promo p3" data-go="hours">'+ic('clock')+'<span><b>Jadwal buka</b><small>Jam buka seminggu</small></span></button>' +
+      '<a class="promo p5" href="'+escapeHtml(info.mapsUrl)+'" target="_blank" rel="noopener">'+ic('pin')+'<span><b>Lokasi kios</b><small>Buka di Google Maps</small></span></a>' +
+      '<button class="promo p6" data-go="favs">'+ic('heart')+'<span><b>Barang favorit</b><small>'+(fc ? fc + ' barang tersimpan' : 'Simpan dari halaman barang')+'</small></span></button>' +
     '</section>';
   }
 
@@ -1313,7 +1367,7 @@
   }
   function openProduct(id, toReviews){
     id = String(id);
-    if(detailId !== id){ pdStars = 0; pdText = ''; pdMsg = ''; }
+    if(detailId !== id){ pdStars = 0; pdText = ''; pdMsg = ''; pdVar = ''; }
     detailId = id; view = 'product'; openPanel = null;
     try{ history.pushState({pw:1}, '', location.pathname + location.search + '#barang-' + id); }catch(e){}
     loadProductComments(id);
@@ -1327,7 +1381,7 @@
   function routeFromHash(){
     var m = /^#barang-(\d+)$/.exec(location.hash || '');
     openPanel = null;
-    if(m){ if(detailId !== m[1]){ pdStars = 0; pdText = ''; pdMsg = ''; } detailId = m[1]; view = 'product'; loadProductComments(detailId); }
+    if(m){ if(detailId !== m[1]){ pdStars = 0; pdText = ''; pdMsg = ''; pdVar = ''; } detailId = m[1]; view = 'product'; loadProductComments(detailId); }
     else view = location.hash === '#komentar' ? 'comments' : location.hash === '#layanan' ? 'services' : location.hash === '#info' ? 'info' : 'home';
     if(view === 'comments') loadComments().then(render);
     render(); window.scrollTo(0, 0);
@@ -1364,7 +1418,10 @@
     if(!p) return '<section class="pd">'+back+'<div class="empty">Barang tidak ditemukan atau sudah tidak dijual.<br><button class="retry-btn" data-view="home">Ke beranda</button></div></section>';
     var hasVar = (p.variants || []).length > 0, qtyAll = productQty(p.id), favOn = isFav(p.id);
     var badges = (p.isNew ? '<span class="new-badge">Baru</span>' : '') + (p.best ? '<span class="best-badge">Terlaris</span>' : '');
-    var photo = '<div class="pd-photo">' + (p.photo ? '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name)+'">' : placeholderIcon()) +
+    var selV = (pdVar && variantExists(p, pdVar)) ? pdVar : '';
+    var selObj = selV ? p.variants.find(function(x){ return x.name === selV; }) : null;
+    var mainPhoto = (selObj && selObj.photo) || p.photo;
+    var photo = '<div class="pd-photo">' + (mainPhoto ? '<img src="'+escapeHtml(mainPhoto)+'" alt="'+escapeHtml(itemLabel(p, selV))+'">' : placeholderIcon()) +
       (badges ? '<div class="badges">'+badges+'</div>' : '') + (p.soldOut ? '<div class="soldout-mask">HABIS</div>' : '') + '</div>';
     var acts = '<div class="pd-act">' +
       '<button type="button" class="pd-fav'+(favOn?' on':'')+'" data-action="fav" data-id="'+p.id+'" aria-pressed="'+favOn+'">'+ic('heart')+'<span>'+(favOn ? 'Favorit' : 'Favoritkan')+'</span></button>';
@@ -1379,13 +1436,14 @@
       else inCart = '<div class="pd-incart"><span>Di keranjang:</span><div class="qty-row inline"><button class="qty-btn" data-action="qty-minus" data-id="'+p.id+'" aria-label="Kurangi">−</button><span class="qty-num">'+qtyAll+'</span><button class="qty-btn" data-action="qty-plus" data-id="'+p.id+'" aria-label="Tambah">+</button></div><button type="button" class="pd-link-btn" id="pd-opencart">Lihat keranjang</button></div>';
     }
     var vars = hasVar ? '<div class="pd-vars"><span>Varian:</span>' + p.variants.map(function(v){
-      return '<span class="pd-chip">'+escapeHtml(v.name)+(v.price && v.price !== p.price ? ' · '+formatRupiah(v.price) : '')+'</span>';
+      return '<button type="button" class="pd-chip pd-vchip'+(v.name === selV ? ' on' : '')+'" data-action="pick-var" data-v="'+escapeHtml(v.name)+'" aria-pressed="'+(v.name === selV)+'">' +
+        (v.photo ? '<img src="'+escapeHtml(v.photo)+'" alt="">' : '') + '<span>'+escapeHtml(v.name)+(v.price && v.price !== p.price ? ' · '+formatRupiah(v.price) : '')+'</span></button>';
     }).join('') + '</div>' : '';
     var noOrderNote = p.noOrder ? '<p class="noorder-note">Rokok hanya untuk dihitung di keranjang dan tidak ikut pesanan WhatsApp. Pembelian langsung di kios.</p>' : '';
     return '<section class="pd">' + back + '<div class="pd-grid">' + photo +
       '<div class="pd-main"><h1>'+escapeHtml(p.name)+'</h1><div class="pd-cat">'+escapeHtml(p.category)+'</div>' +
-        '<div class="pd-price">'+priceRangeText(p)+'</div>' +
-        '<button type="button" class="pd-rate" data-action="reviews" data-id="'+p.id+'">'+starsHtml(p.rating)+'<span class="rate-n">'+(p.ratingCount ? p.rating.toFixed(1)+' ('+p.ratingCount+' ulasan)' : 'Belum ada ulasan')+'</span></button>' +
+        '<div class="pd-price">'+(selV ? formatRupiah(unitPrice(p, selV)) : priceRangeText(p))+'</div>' +
+        '<button type="button" class="pd-rate" data-action="reviews" data-id="'+p.id+'">'+starsHtml(p.rating)+'<span class="rate-n">'+(p.ratingCount ? p.rating.toFixed(1)+' ('+p.ratingCount+' ulasan)' : 'N/A')+'</span></button>' +
         acts + inCart + noOrderNote + vars +
         '<h2 class="sec-title"><span>Deskripsi</span></h2><p class="pd-desc">'+(p.description ? nl2br(p.description) : 'Belum ada deskripsi untuk barang ini.')+'</p>' +
       '</div></div>' + reviewsHtml(p) + '</section>';
@@ -1415,7 +1473,7 @@
     function paint(){
       var rows = p.variants.map(function(v){
         var key = cartKey(p.id, v.name), q = cart[key] || 0, ek = escapeHtml(key);
-        return '<div class="ct-row vp-row"><div class="ct-name">'+escapeHtml(v.name)+'<small>'+formatRupiah(unitPrice(p, v.name))+'</small></div>' +
+        return '<div class="ct-row vp-row"><div class="ct-name"><div class="vp-name">'+(v.photo ? '<img class="vp-img" src="'+escapeHtml(v.photo)+'" alt="" loading="lazy">' : '')+'<div>'+escapeHtml(v.name)+'<small>'+formatRupiah(unitPrice(p, v.name))+'</small></div></div></div>' +
           '<div class="ct-qty"><button type="button" class="qty-btn" data-vk="'+ek+'" data-d="-1" aria-label="Kurangi">−</button><span class="qty-num">'+q+'</span><button type="button" class="qty-btn" data-vk="'+ek+'" data-d="1" aria-label="Tambah">+</button></div></div>';
       }).join('');
       var tot = productQty(p.id);
@@ -1448,7 +1506,7 @@
 
   function buildProductList(){
     if(loadStatus === 'loading') return '<div class="empty">Memuat daftar barang…</div>';
-    if(loadStatus === 'error') return '<div class="empty">Daftar barang belum bisa dimuat. Periksa internet Anda.<br><button class="retry-btn" id="btn-retry">Coba lagi</button></div>';
+    if(loadStatus === 'error') return '<div class="empty">Daftar barang belum bisa dimuat. Periksa internet Anda. <small>(kode: ' + escapeHtml(loadErr || '-') + ')</small><br><button class="retry-btn" id="btn-retry">Coba lagi</button></div>';
 
     var base = STATE.products.slice();
     if(activeCat === '__new') base = base.filter(function(p){ return p.isNew; });
@@ -1543,10 +1601,11 @@
     } else if(view === 'product'){
       html += productPage();
     } else {
-      if(fromCache) html += '<div class="offline-note">Tidak ada internet — menampilkan daftar barang terakhir yang tersimpan. Harga mungkin sudah berubah.</div>';
+      if(fromCache) html += '<div class="offline-note">' + (/^HTTP/.test(loadErr) ? 'Data terbaru belum bisa dimuat dari server' : 'Tidak ada internet') + ' — menampilkan daftar barang terakhir yang tersimpan. Harga mungkin sudah berubah. <small>(kode: ' + escapeHtml(loadErr || '-') + ')</small></div>';
       var sorts = [['kategori','Per kategori'],['rating','Rating ↑'],['rating_asc','Rating ↓'],['mahal','Harga ↑'],['murah','Harga ↓'],['az','Nama A-Z'],['za','Nama Z-A']];
       var catLabel = (chipDefs.find(function(c){ return c.v === activeCat; }) || {t:'Semua'}).t;
       var sortLabel = (sorts.find(function(o){ return o[0] === sortMode; }) || ['', 'Per kategori'])[1];
+      var htmlBeforePk = html; html = '';
       html += '<div class="pickers">';
       html += '<section class="panel'+(openPanel==='cat'?' open':'')+'" aria-label="Kategori">' +
         '<button class="pk-btn" data-pick="cat" aria-expanded="'+(openPanel==='cat')+'"><span class="pk-t"><span class="pk-l">Kategori</span><span class="pk-v">'+escapeHtml(catLabel)+'</span></span>'+ic('down','pk-ic')+'</button>';
@@ -1568,14 +1627,17 @@
         html += '</div>';
       }
       html += '</section></div>';
+      var pickersHtml = html; html = htmlBeforePk;
       html += sliderHtml();
       if(ANNS.length){ html += '<button class="ann-bar" data-view="info">'+ic('megaphone')+'<span>'+escapeHtml(ANNS[0].title)+'</span><small>Lihat</small></button>'; }
 
-      html += infoCard();
+      html += statusCard();
 
       if(showHome){
-        var hs = highlightStrips();
-        html += hs.indexOf('__PROMO__') !== -1 ? hs.replace('__PROMO__', promoTiles()) : (hs + promoTiles());
+        var hs = highlightStrips(), mid = promoTiles() + pickersHtml;
+        html += hs.indexOf('__PROMO__') !== -1 ? hs.replace('__PROMO__', function(){ return mid; }) : (hs + mid);
+      } else {
+        html += pickersHtml;
       }
 
       html += '<h2 class="sec-title all-title"><span>'+(searchQuery.trim() ? 'Hasil pencarian' : (activeCat === '__new' ? 'Stok Baru' : activeCat === '__best' ? 'Terlaris' : activeCat === '__fav' ? 'Favorit' : 'Semua Barang'))+'</span></h2>';
@@ -1626,6 +1688,8 @@
         if(g === 'scan') openScanner();
         else if(g === 'calc') openCalcModal();
         else if(g === 'qris') openQrisModal();
+        else if(g === 'hours') openHoursModal();
+        else if(g === 'favs') showFavorites();
         else if(g === 'request'){ reqItem = searchQuery.trim().slice(0, 80); searchQuery = ''; setView('services'); }
         else if(g === 'best'){ activeCat = '__best'; render(); window.scrollTo(0, 0); }
         else if(g === 'new'){ activeCat = '__new'; render(); window.scrollTo(0, 0); }
@@ -1715,6 +1779,9 @@
       if(b.tagName !== 'A') b.onclick = function(){ openProduct(b.dataset.open); };
     });
     document.querySelectorAll('[data-action="back"]').forEach(function(b){ b.onclick = closeProduct; });
+    document.querySelectorAll('[data-action="pick-var"]').forEach(function(b){
+      b.onclick = function(){ pdVar = (pdVar === b.dataset.v) ? '' : b.dataset.v; render(); };
+    });
     document.querySelectorAll('[data-action="variants"]').forEach(function(b){
       b.onclick = function(e){ e.stopPropagation(); var p = findProduct(b.dataset.id); if(p) openVariantPicker(p); };
     });
@@ -1841,6 +1908,19 @@
   }
 
   /* ====== MODAL ====== */
+  function downloadQris(btn){
+    if(!STATE.qris) return;
+    var old = btn ? btn.textContent : '';
+    if(btn){ btn.disabled = true; btn.textContent = 'Mengunduh…'; }
+    function done(){ if(btn){ btn.disabled = false; btn.textContent = old; } }
+    fetch(STATE.qris, {cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error('qris'); return r.blob(); }).then(function(blob){
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'QRIS-Kios-Pak-Wan.png';
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} a.remove(); }, 1500);
+      done();
+    }).catch(function(){ done(); window.open(STATE.qris, '_blank'); showNote('Unduhan otomatis gagal. QRIS dibuka di tab baru, tahan gambarnya lalu pilih Simpan gambar.'); });
+  }
   function openQrisModal(){
     if(!STATE.qris) return;
     var overlay = document.createElement('div');
@@ -1850,6 +1930,7 @@
         '<h2>Bayar via QRIS</h2>' +
         '<div class="preview"><img src="'+escapeHtml(STATE.qris)+'" alt="QRIS"></div>' +
         '<p class="hint">Pindai kode ini untuk membayar ke '+escapeHtml(STATE.shopName)+'.</p>' +
+        '<div class="qris-dl"><button type="button" class="dl-qris" data-dl-qris>Unduh QRIS</button></div>' +
         '<div class="sheet-actions"><button class="primary" id="f-close">Tutup</button></div>' +
       '</div>';
     document.body.appendChild(overlay);
@@ -2120,6 +2201,7 @@
     else if(location.hash === '#layanan'){ view = 'services'; }
     else if(location.hash === '#info'){ view = 'info'; }
     window.addEventListener('popstate', routeFromHash);
+    document.addEventListener('click', function(e){ var b = e.target.closest && e.target.closest('[data-dl-qris]'); if(b) downloadQris(b); });
     loadCart();
     render(); // tampilkan info toko dulu, barang menyusul
     Promise.all([loadProductsAll(), checkQris(), loadSlides(), loadServices(), loadInfo()]).then(render);

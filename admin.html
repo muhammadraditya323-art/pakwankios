@@ -82,6 +82,15 @@
   .filebtn input{ position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; }
   .quick{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:8px 0 4px; }
   .quick button{ border:1px solid var(--line); background:var(--paper); color:var(--ink); border-radius:8px; padding:9px 0; font:600 0.82rem 'Public Sans',sans-serif; }
+  .var-box{ border:1px solid var(--line); border-radius:12px; padding:12px; margin:4px 0 14px; background:var(--paper); }
+  .var-box h3{ font:600 0.95rem 'Public Sans',sans-serif; margin:0 0 2px; }
+  .var-row{ display:flex; gap:8px; align-items:center; margin:10px 0 0; padding-top:10px; border-top:1px dashed var(--line); }
+  .var-thumb{ flex:none; width:64px; height:64px; border-radius:10px; background:#EFE7D6; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:0.66rem; color:#6b5d4a; text-align:center; position:relative; }
+  .var-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .var-thumb input{ position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; }
+  .var-fields{ flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; }
+  .var-fields input{ margin:0 !important; padding:8px !important; }
+  .var-x{ flex:none; border:1px solid var(--red); background:transparent; color:var(--red); border-radius:8px; width:34px; height:34px; font-size:1.1rem; line-height:1; }
   .sub-note{ font-size:0.78rem; opacity:0.65; margin:0 0 10px; }
   .login{ max-width:380px; margin:12vh auto 0; padding:0 18px; }
   .login h1{ font:600 1.6rem 'Fraunces',serif; margin:0 0 4px; }
@@ -820,10 +829,32 @@
   }
 
   /* ---- Tambah / ubah barang ---- */
+  function parseVars(raw){
+    var out = [], arr = null;
+    if(Array.isArray(raw)) arr = raw;
+    else if(typeof raw === 'string' && /^\s*\[/.test(raw)){ try{ arr = JSON.parse(raw); }catch(e){ arr = null; } }
+    if(arr){
+      arr.forEach(function(it){
+        if(it && typeof it === 'object' && it.name) out.push({name:String(it.name), price:it.price > 0 ? parseInt(it.price,10) : '', photo:it.photo || null});
+        else if(typeof it === 'string' && it.trim()) out.push({name:it.trim(), price:'', photo:null});
+      });
+    } else if(typeof raw === 'string'){
+      raw.split(/[\n,;]+/).forEach(function(t){
+        t = t.trim(); if(!t) return;
+        var m = t.match(/^(.*?)\s*[:=]\s*(\d{3,9})$/);
+        out.push({name:m ? m[1] : t, price:m ? parseInt(m[2],10) : '', photo:null});
+      });
+    }
+    return out;
+  }
+  function varPhotoSrc(ph){ return /^(https?:|data:image\/)/.test(ph) ? ph : photoUrl(ph); }
+
   function openEdit(existing, preset){
     var isEdit = !!existing;
     var p = existing || {name:'', price:'', category:(BASE_CATS.indexOf('Lainnya')>-1?'Lainnya':BASE_CATS[0]), description:'', photo:null, barcode:preset.barcode || '', is_new:true, is_best:false, sold_out:false, cost:null, margin_pct:null};
     var pendingBlob = null, removedOld = false;
+    var vars = parseVars(p.variants).map(function(v){ return {name:v.name, price:v.price, photo:v.photo, blob:null, prev:null}; });
+    var oldVarPhotos = vars.map(function(v){ return v.photo; }).filter(function(x){ return x && !/^(https?:|data:)/.test(x); });
     var cats = categories();
     var ov = openSheet(
       '<h2>' + (isEdit ? 'Ubah barang' : 'Barang baru') + '</h2>' +
@@ -844,12 +875,51 @@
       '<div class="sub-note" id="e-profit" style="margin:-6px 0 10px"></div>' +
       '<label>Kategori<select id="e-cat">' + cats.map(function(c){ return '<option' + (c===p.category?' selected':'') + '>' + esc(c) + '</option>'; }).join('') + '</select></label>' +
       '<label>Keterangan (opsional)<textarea id="e-desc" placeholder="Ukuran, varian, dll">' + esc(p.description || '') + '</textarea></label>' +
+      '<div class="var-box"><h3>Varian (opsional)</h3>' +
+        '<div class="sub-note" style="margin:0">Untuk rasa/ukuran berbeda dalam satu barang. Tiap varian bisa punya foto dan harga sendiri. Harga kosong = pakai harga jual di atas.</div>' +
+        '<div id="e-vars"></div>' +
+        '<button class="btn ghost" id="e-addvar" type="button" style="width:100%;margin-top:10px">+ Tambah varian</button></div>' +
       '<label class="check"><input id="e-new" type="checkbox"' + (p.is_new?' checked':'') + '> Stok baru</label>' +
       '<label class="check"><input id="e-best" type="checkbox"' + (p.is_best?' checked':'') + '> Barang terlaris</label>' +
       '<label class="check"><input id="e-sold" type="checkbox"' + (p.sold_out?' checked':'') + '> Stok habis</label>' +
       '<div class="actions-row">' + (isEdit ? '<button class="btn danger" id="e-del">Hapus</button>' : '') +
         '<button class="btn ghost" id="e-cancel">Batal</button><button class="btn" id="e-save">Simpan</button></div>');
 
+    var varWrap = ov.querySelector('#e-vars');
+    function drawVars(){
+      varWrap.innerHTML = vars.map(function(v, i){
+        var src = v.prev || (v.photo ? varPhotoSrc(v.photo) : null);
+        return '<div class="var-row" data-i="' + i + '">' +
+          '<div class="var-thumb">' + (src ? '<img src="' + esc(src) + '" alt="">' : 'Foto') + '<input type="file" accept="image/*" class="v-file"></div>' +
+          '<div class="var-fields"><input class="v-name" placeholder="Nama varian (mis. Soto)" maxlength="40" value="' + esc(v.name) + '">' +
+          '<input class="v-price" type="number" inputmode="numeric" min="0" placeholder="Harga (Rp)" value="' + (v.price === '' ? '' : v.price) + '"></div>' +
+          '<button type="button" class="var-x v-del" aria-label="Hapus varian">&times;</button></div>';
+      }).join('');
+    }
+    function syncVars(){
+      Array.prototype.forEach.call(varWrap.querySelectorAll('.var-row'), function(row){
+        var v = vars[+row.dataset.i]; if(!v) return;
+        v.name = row.querySelector('.v-name').value;
+        var n = parseInt(row.querySelector('.v-price').value, 10); v.price = isNaN(n) ? '' : n;
+      });
+    }
+    varWrap.addEventListener('click', function(e){
+      var d = e.target.closest('.v-del'); if(!d) return;
+      syncVars(); vars.splice(+d.closest('.var-row').dataset.i, 1); drawVars();
+    });
+    varWrap.addEventListener('change', function(e){
+      if(!e.target.classList.contains('v-file')) return;
+      var f = e.target.files && e.target.files[0]; if(!f) return;
+      var idx = +e.target.closest('.var-row').dataset.i;
+      compress(f, {max:600}).then(function(b){
+        syncVars(); vars[idx].blob = b; vars[idx].prev = URL.createObjectURL(b); drawVars();
+      }).catch(function(ex){ toast(ex.message, true); });
+    });
+    ov.querySelector('#e-addvar').onclick = function(){
+      syncVars(); vars.push({name:'', price:'', photo:null, blob:null, prev:null}); drawVars();
+      var ins = varWrap.querySelectorAll('.v-name'); if(ins.length) ins[ins.length-1].focus();
+    };
+    drawVars();
     function onPhoto(e){
       var f = e.target.files && e.target.files[0]; if(!f) return;
       compress(f).then(function(b){
@@ -903,6 +973,7 @@
         askConfirm('Hapus "' + p.name + '"? Tidak bisa dibatalkan.', function(){
           removeProduct(p.id).then(function(){
             if(p.photo) deletePhoto(p.photo);
+            oldVarPhotos.forEach(deletePhoto);
             products = products.filter(function(x){ return x.id !== p.id; });
             ov.close(); renderMain(); toast('Barang dihapus');
           }).catch(function(ex){ toast(errMsg(ex), true); });
@@ -925,19 +996,44 @@
       if(data.margin_pct != null) setMargin(data.margin_pct);
       var btn = ov.querySelector('#e-save'); btn.disabled = true; btn.textContent = 'Menyimpan…';
       var oldPhoto = p.photo;
+      syncVars();
+      var cleanVars = vars.filter(function(v){ return v.name.trim(); });
+      var seen = {};
+      for(var k = 0; k < cleanVars.length; k++){
+        var key = cleanVars[k].name.trim().toLowerCase();
+        if(seen[key]){ btn.disabled = false; btn.textContent = 'Simpan'; toast('Nama varian "' + cleanVars[k].name.trim() + '" kembar.', true); return; }
+        seen[key] = 1;
+      }
+      var newVarFiles = [];
       var step = Promise.resolve();
       if(pendingBlob){
         var fname = slug(name) + '-' + Date.now().toString(36) + '.jpg';
         step = uploadPhoto(pendingBlob, fname).then(function(){ data.photo = fname; });
       }
+      cleanVars.forEach(function(v, i){
+        if(!v.blob) return;
+        step = step.then(function(){
+          var vn = slug(name) + '-v' + i + '-' + Date.now().toString(36) + '.jpg';
+          return uploadPhoto(v.blob, vn).then(function(){ newVarFiles.push(vn); v.photo = vn; v.blob = null; });
+        });
+      });
+      step = step.then(function(){
+        data.variants = cleanVars.length ? JSON.stringify(cleanVars.map(function(v){
+          var o = {name:v.name.trim()}; if(v.price > 0) o.price = v.price; if(v.photo) o.photo = v.photo; return o;
+        })) : null;
+      });
       step.then(function(){ return isEdit ? patchProduct(p.id, data) : insertProduct(data); })
         .then(function(row){
           if(isEdit){ Object.assign(p, row); } else { products.push(row); products.sort(function(a,b){ return a.name.localeCompare(b.name,'id'); }); }
           if(pendingBlob && oldPhoto) deletePhoto(oldPhoto);
+          var keep = cleanVars.map(function(v){ return v.photo; });
+          oldVarPhotos.forEach(function(o){ if(keep.indexOf(o) < 0) deletePhoto(o); });
           ov.close(); renderMain(); toast(isEdit ? 'Tersimpan' : 'Barang ditambahkan');
         })
         .catch(function(ex){
           if(data.photo && !isEdit) deletePhoto(data.photo);
+          newVarFiles.forEach(deletePhoto);
+          if(newVarFiles.length) cleanVars.forEach(function(v){ if(newVarFiles.indexOf(v.photo) > -1){ v.photo = null; } });
           btn.disabled = false; btn.textContent = 'Simpan'; toast(errMsg(ex), true);
         });
     };
