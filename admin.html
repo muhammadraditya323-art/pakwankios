@@ -90,6 +90,9 @@
   .var-thumb input{ position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; }
   .var-fields{ flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; }
   .var-fields input{ margin:0 !important; padding:8px !important; }
+  .v-bar-row{ display:flex; align-items:center; gap:8px; }
+  .v-scan{ padding:7px 10px !important; font-size:0.78rem !important; }
+  .v-bar-t{ font-size:0.74rem; opacity:.6; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .var-x{ flex:none; border:1px solid var(--red); background:transparent; color:var(--red); border-radius:8px; width:34px; height:34px; font-size:1.1rem; line-height:1; }
   .sub-note{ font-size:0.78rem; opacity:0.65; margin:0 0 10px; }
   .login{ max-width:380px; margin:12vh auto 0; padding:0 18px; }
@@ -835,14 +838,14 @@
     else if(typeof raw === 'string' && /^\s*\[/.test(raw)){ try{ arr = JSON.parse(raw); }catch(e){ arr = null; } }
     if(arr){
       arr.forEach(function(it){
-        if(it && typeof it === 'object' && it.name) out.push({name:String(it.name), price:it.price > 0 ? parseInt(it.price,10) : '', photo:it.photo || null});
+        if(it && typeof it === 'object' && it.name) out.push({name:String(it.name), price:it.price > 0 ? parseInt(it.price,10) : '', photo:it.photo || null, barcode:it.barcode || ''});
         else if(typeof it === 'string' && it.trim()) out.push({name:it.trim(), price:'', photo:null});
       });
     } else if(typeof raw === 'string'){
       raw.split(/[\n,;]+/).forEach(function(t){
         t = t.trim(); if(!t) return;
         var m = t.match(/^(.*?)\s*[:=]\s*(\d{3,9})$/);
-        out.push({name:m ? m[1] : t, price:m ? parseInt(m[2],10) : '', photo:null});
+        out.push({name:m ? m[1] : t, price:m ? parseInt(m[2],10) : '', photo:null, barcode:''});
       });
     }
     return out;
@@ -853,7 +856,7 @@
     var isEdit = !!existing;
     var p = existing || {name:'', price:'', category:(BASE_CATS.indexOf('Lainnya')>-1?'Lainnya':BASE_CATS[0]), description:'', photo:null, barcode:preset.barcode || '', is_new:true, is_best:false, sold_out:false, cost:null, margin_pct:null};
     var pendingBlob = null, removedOld = false;
-    var vars = parseVars(p.variants).map(function(v){ return {name:v.name, price:v.price, photo:v.photo, blob:null, prev:null}; });
+    var vars = parseVars(p.variants).map(function(v){ return {name:v.name, price:v.price, photo:v.photo, barcode:v.barcode || '', blob:null, prev:null}; });
     var oldVarPhotos = vars.map(function(v){ return v.photo; }).filter(function(x){ return x && !/^(https?:|data:)/.test(x); });
     var cats = categories();
     var ov = openSheet(
@@ -892,7 +895,8 @@
         return '<div class="var-row" data-i="' + i + '">' +
           '<div class="var-thumb">' + (src ? '<img src="' + esc(src) + '" alt="">' : 'Foto') + '<input type="file" accept="image/*" class="v-file"></div>' +
           '<div class="var-fields"><input class="v-name" placeholder="Nama varian (mis. Soto)" maxlength="40" value="' + esc(v.name) + '">' +
-          '<input class="v-price" type="number" inputmode="numeric" min="0" placeholder="Harga (Rp)" value="' + (v.price === '' ? '' : v.price) + '"></div>' +
+          '<input class="v-price" type="number" inputmode="numeric" min="0" placeholder="Harga (Rp)" value="' + (v.price === '' ? '' : v.price) + '">' +
+          '<div class="v-bar-row"><button type="button" class="btn ghost v-scan">Scan barcode</button><span class="v-bar-t">' + (v.barcode ? esc(v.barcode) : 'isi otomatis') + '</span></div></div>' +
           '<button type="button" class="var-x v-del" aria-label="Hapus varian">&times;</button></div>';
       }).join('');
     }
@@ -904,6 +908,28 @@
       });
     }
     varWrap.addEventListener('click', function(e){
+      var sc = e.target.closest('.v-scan');
+      if(sc){
+        syncVars(); var idx = +sc.closest('.var-row').dataset.i;
+        openScanner(function(code){
+          var v = vars[idx]; if(!v) return;
+          v.barcode = code; drawVars(); toast('Barcode: ' + code + ' — mencari data…');
+          lookupProduct(code).then(function(prod){
+            if(!prod){ toast('Tidak ada di database produk. Isi nama/harga manual.', true); return; }
+            var brand = (prod.brands || '').split(',')[0].trim(), nm = (prod.product_name || '').trim();
+            var full = (brand && nm.toLowerCase().indexOf(brand.toLowerCase()) === -1) ? (brand + ' ' + nm).trim() : (nm || brand);
+            syncVars();
+            if(!vars[idx].name.trim() && full) vars[idx].name = full.slice(0, 40);
+            drawVars(); toast('Ditemukan: ' + full);
+            if(prod.image_front_url && !vars[idx].blob && !vars[idx].photo){
+              fetch(prod.image_front_url).then(function(r){ if(!r.ok) throw new Error('x'); return r.blob(); }).then(function(b){ return compress(b, {max:600}); }).then(function(b){
+                syncVars(); vars[idx].blob = b; vars[idx].prev = URL.createObjectURL(b); drawVars();
+              }).catch(function(){});
+            }
+          });
+        });
+        return;
+      }
       var d = e.target.closest('.v-del'); if(!d) return;
       syncVars(); vars.splice(+d.closest('.var-row').dataset.i, 1); drawVars();
     });
@@ -1019,7 +1045,7 @@
       });
       step = step.then(function(){
         data.variants = cleanVars.length ? JSON.stringify(cleanVars.map(function(v){
-          var o = {name:v.name.trim()}; if(v.price > 0) o.price = v.price; if(v.photo) o.photo = v.photo; return o;
+          var o = {name:v.name.trim()}; if(v.price > 0) o.price = v.price; if(v.photo) o.photo = v.photo; if(v.barcode) o.barcode = v.barcode; return o;
         })) : null;
       });
       step.then(function(){ return isEdit ? patchProduct(p.id, data) : insertProduct(data); })

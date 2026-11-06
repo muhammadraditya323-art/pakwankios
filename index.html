@@ -424,6 +424,17 @@
   .brand-logo{ height:34px; width:auto; display:block; }
   @media(min-width:720px){ .brand-logo{ height:40px; } }
   .foot-logo{ height:64px; width:auto; margin-bottom:12px; }
+  .thumb img.rot{ position:absolute; inset:0; opacity:0; transition:opacity .7s ease; }
+  .thumb img.rot.on{ opacity:1; }
+  .sugg{ position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:30; background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:0 10px 28px rgba(0,0,0,.16); overflow:hidden; }
+  .sg-item{ display:flex; align-items:center; gap:10px; width:100%; padding:11px 14px; border:0; border-bottom:1px solid var(--line); background:#fff; text-align:left; font:500 0.92rem 'Public Sans',sans-serif; color:var(--ink); }
+  .sg-item:last-child{ border-bottom:0; }
+  .sg-item:active{ background:#EAF4EE; }
+  .sg-item .ic{ position:static; transform:none; width:1rem; height:1rem; flex:none; color:var(--green); }
+  .sg-item span{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sg-item small{ opacity:.55; font-size:0.74rem; }
+  .near{ margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; font-size:0.9rem; }
+  .near-chip{ border:1px solid var(--green); background:#fff; color:var(--green); border-radius:999px; padding:7px 14px; font:600 0.86rem 'Public Sans',sans-serif; }
   .ann-bar{ width:100%; display:flex; align-items:center; gap:10px; margin:12px 0 0; padding:10px 14px; border:1px solid var(--gold); background:#FFF8E1; border-radius:12px; cursor:pointer; font:600 0.84rem 'Public Sans',sans-serif; color:var(--ink); text-align:left; }
   .ann-bar .ic{ color:#B07F00; }
   .ann-bar span{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -611,6 +622,7 @@
   var DAY_NAMES = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
   var activeCat = 'Semua';
   var searchQuery = '';
+  var suggestOpen = false;
   var sortMode = 'kategori';
   var cart = {};        // { productId: qty }
   var bayarState = '';  // uang dibayar (dipakai bersama bar keranjang & kalkulator)
@@ -641,18 +653,18 @@
   }
   function parseVariants(raw){
     var out = [];
-    function add(name, price, photo){
+    function add(name, price, photo, barcode){
       name = String(name == null ? '' : name).trim().slice(0, 40);
       if(!name) return;
       if(out.some(function(v){ return v.name.toLowerCase() === name.toLowerCase(); })) return;
       var pr = parseInt(price, 10);
-      out.push({name: name, price: pr > 0 ? pr : null, photo: variantPhoto(photo)});
+      out.push({name: name, price: pr > 0 ? pr : null, photo: variantPhoto(photo), barcode: barcode ? String(barcode).trim() : ''});
     }
     var arr = null;
     if(Array.isArray(raw)) arr = raw;
     else if(typeof raw === 'string' && /^\s*\[/.test(raw)){ try{ arr = JSON.parse(raw); }catch(e){ arr = null; } }
     if(arr){
-      arr.forEach(function(it){ if(it && typeof it === 'object') add(it.name, it.price, it.photo); else add(it, null, null); });
+      arr.forEach(function(it){ if(it && typeof it === 'object') add(it.name, it.price, it.photo, it.barcode); else add(it, null, null); });
     } else {
       String(raw == null ? '' : raw).split(/[\n,;]+/).forEach(function(t){
         t = t.trim(); if(!t) return;
@@ -695,11 +707,12 @@
     return fetch(url, {headers: {apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY}})
       .then(function(res){ if(!res.ok){ var e = new Error('HTTP ' + res.status); e.status = res.status; throw e; } return res.json(); });
   }
+  function colErr(e){ return !!(e && (e.status === 400 || e.status === 401 || e.status === 403)); }
   function loadProducts(){
     // coba dengan kolom rating; kalau SQL terbaru belum dijalankan (HTTP 400), pakai kolom dasar
     return fetchProducts(BASE_COLS + ',rating_avg,rating_count,variants')
-      .catch(function(e){ if(e && e.status === 400) return fetchProducts(BASE_COLS + ',rating_avg,rating_count'); throw e; })
-      .catch(function(e){ if(e && e.status === 400) return fetchProducts(BASE_COLS); throw e; })
+      .catch(function(e){ if(colErr(e)) return fetchProducts(BASE_COLS + ',rating_avg,rating_count'); throw e; })
+      .catch(function(e){ if(colErr(e)) return fetchProducts(BASE_COLS); throw e; })
       .then(function(rows){
         var list = rows.map(normalize);
         applyProducts(list);
@@ -755,8 +768,8 @@
     var base = 'comments?select=id,name,body,created_at';
     var q = '&approved=eq.true&order=id.desc&limit=60';
     return getJson(base + ',stars,product_id' + q)
-      .catch(function(e){ if(e && e.status === 400) return getJson(base + ',stars' + q); throw e; })
-      .catch(function(e){ if(e && e.status === 400) return getJson(base + q); throw e; })
+      .catch(function(e){ if(colErr(e)) return getJson(base + ',stars' + q); throw e; })
+      .catch(function(e){ if(colErr(e)) return getJson(base + q); throw e; })
       .then(function(rows){ COMMENTS = rows; cmStatus = 'ok'; })
       .catch(function(){ COMMENTS = []; cmStatus = 'error'; })
       .then(function(){ return rpc('comment_summary', {}).then(function(r){ cmSummary = (r && r.count) ? r : null; }).catch(function(){ cmSummary = null; }); });
@@ -951,6 +964,36 @@
     }
     return false;
   }
+  function suggestProducts(q){
+    var qn = normText(q); if(!qn) return [];
+    var toks = qn.split(' ').filter(Boolean), out = [];
+    STATE.products.forEach(function(p){
+      var words = normText(p.name + ' ' + (p.variants || []).map(function(v){ return v.name; }).join(' ')).split(' ');
+      var total = 0, ok = true;
+      for(var i = 0; i < toks.length && ok; i++){
+        var t = toks[i], best = 9, lim = t.length <= 2 ? 0.5 : (t.length <= 4 ? 1 : 2);
+        for(var j = 0; j < words.length; j++){
+          var w = words[j], d;
+          if(w.indexOf(t) === 0) d = 0; else if(w.indexOf(t) > 0) d = 0.5;
+          else { d = editDist(t, w); if(w.length > t.length) d = Math.min(d, editDist(t, w.slice(0, t.length))); }
+          if(d < best) best = d;
+        }
+        if(best > lim) ok = false; else total += best;
+      }
+      if(ok) out.push({p:p, s:total});
+    });
+    out.sort(function(a, b){ return (a.s - b.s) || (a.p.name || '').localeCompare(b.p.name || '', 'id'); });
+    return out.slice(0, 6).map(function(o){ return o.p; });
+  }
+  function suggestHtml(){
+    if(!suggestOpen || !searchQuery.trim()) return '';
+    var qn = normText(searchQuery);
+    var list = suggestProducts(searchQuery).filter(function(p){ return normText(p.name) !== qn; });
+    if(!list.length) return '';
+    return '<div class="sugg" role="listbox">' + list.map(function(p){
+      return '<button type="button" class="sg-item" role="option" data-sugg="'+p.id+'">' + ic('search') + '<span>'+escapeHtml(p.name)+'</span><small>'+escapeHtml(p.category || '')+'</small></button>';
+    }).join('') + '</div>';
+  }
   function productMatches(p, qNorm){
     if(!qNorm) return true;
     if(p._ns === undefined || p._nsSrc !== (p.name || '') + '|' + (p.description || '')){
@@ -1107,6 +1150,24 @@
   }
 
   /* ====== TAMPILAN ====== */
+  function rotPhotos(p){
+    var out = [];
+    if(p.photo) out.push(p.photo);
+    (p.variants || []).forEach(function(v){ if(v.photo && out.indexOf(v.photo) < 0) out.push(v.photo); });
+    return (p.variants || []).length ? out : [];
+  }
+  var rotTick = 0;
+  function initRotator(){
+    setInterval(function(){
+      rotTick++;
+      document.querySelectorAll('.thumb[data-rot]').forEach(function(t, k){
+        var imgs = t.querySelectorAll('img.rot'); if(imgs.length < 2) return;
+        var cur = 0; for(var i = 0; i < imgs.length; i++){ if(imgs[i].classList.contains('on')) cur = i; }
+        if((rotTick + k) % 2) return; // geser bergantian antar kartu
+        imgs[cur].classList.remove('on'); imgs[(cur + 1) % imgs.length].classList.add('on');
+      });
+    }, 1800);
+  }
   function productCard(p){
     var hasVar = (p.variants || []).length > 0;
     var qty = hasVar ? productQty(p.id) : (cart[p.id] || 0);
@@ -1126,9 +1187,13 @@
     if(p.noOrder && !p.soldOut) action += '<div class="noorder-note">Hanya untuk hitungan · tidak ikut pesanan</div>';
     var rate = '<button type="button" class="rate-chip'+(p.ratingCount ? '' : ' na')+'" data-action="reviews" data-id="'+p.id+'" aria-label="Rating '+escapeHtml(p.name)+': '+(p.ratingCount ? p.rating.toFixed(1) : 'belum ada')+'">' +
       starSvg(p.ratingCount > 0) + '<span>' + (p.ratingCount ? p.rating.toFixed(1) : 'N/A') + '</span></button>';
+    var rot = rotPhotos(p);
+    var thumbImgs = rot.length > 1
+      ? rot.map(function(u, i){ return '<img class="rot'+(i===0?' on':'')+'" src="'+escapeHtml(u)+'" alt="'+escapeHtml(p.name)+'" loading="lazy">'; }).join('')
+      : (p.photo ? '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name)+'" loading="lazy">' : placeholderIcon());
     return '<article class="card'+(p.soldOut?' soldout':'')+'" data-pid="'+p.id+'">' +
-      '<div class="thumb">' +
-        (p.photo ? '<img src="'+escapeHtml(p.photo)+'" alt="'+escapeHtml(p.name)+'" loading="lazy">' : placeholderIcon()) +
+      '<div class="thumb"'+(rot.length > 1 ? ' data-rot="1"' : '')+'>' +
+        thumbImgs +
         rate +
         (badges ? '<div class="badges">'+badges+'</div>' : '') +
         (p.soldOut ? '<div class="soldout-mask">HABIS</div>' : '') +
@@ -1150,8 +1215,7 @@
   }
   function highlightStrips(){
     var news = STATE.products.filter(function(p){ return p.isNew; });
-    var bests = STATE.products.filter(function(p){ return p.best; });
-    return sectionRow('Stok Baru', 'new', news, '__new') + '__PROMO__' + sectionRow('Terlaris', 'best', bests, '__best');
+    return sectionRow('Stok Baru', 'new', news, '__new') + '__PROMO__';
   }
   function promoTiles(){
     var info = STATE.info, fc = favProducts().length;
@@ -1362,7 +1426,7 @@
     PC[id] = {status:'loading', rows:[]};
     return getJson('comments?select=id,name,body,created_at,stars&approved=eq.true&product_id=eq.' + encodeURIComponent(id) + '&order=id.desc&limit=40')
       .then(function(rows){ PC[id] = {status:'ok', rows:rows}; })
-      .catch(function(e){ PC[id] = {status: (e && e.status === 400) ? 'unsupported' : 'error', rows:[]}; })
+      .catch(function(e){ PC[id] = {status: colErr(e) ? 'unsupported' : 'error', rows:[]}; })
       .then(function(){ if(view === 'product' && detailId === id) render(); });
   }
   function openProduct(id, toReviews){
@@ -1548,7 +1612,8 @@
     }
     if(!any){
       var msg;
-      if(q) msg = 'Tidak ada barang yang cocok dengan pencarian "'+escapeHtml(searchQuery)+'".' + (q.length >= 2 ? '<br><button class="retry-btn" data-go="request">Minta kios menyediakan barang ini</button>' : '');
+      var near = q ? suggestProducts(searchQuery) : [];
+      if(q) msg = 'Tidak ada barang yang cocok dengan pencarian "'+escapeHtml(searchQuery)+'".' + (near.length ? '<div class="near"><span>Mungkin maksud Anda:</span>' + near.map(function(p){ return '<button type="button" class="near-chip" data-sugg="'+p.id+'">'+escapeHtml(p.name)+'</button>'; }).join('') + '</div>' : '') + (q.length >= 2 ? '<br><button class="retry-btn" data-go="request">Minta kios menyediakan barang ini</button>' : '');
       else if(activeCat === '__new') msg = 'Belum ada stok baru saat ini.';
       else if(activeCat === '__best') msg = 'Belum ada barang terlaris yang ditandai.';
       else if(activeCat === '__fav') msg = 'Belum ada barang favorit. Ketuk ikon hati pada barang untuk menyimpannya.';
@@ -1580,7 +1645,7 @@
     html += '<div class="topbar"><div class="wrap"><span>'+ic('pin')+'Prambon, Nganjuk</span><span class="tb-r">Cek harga &amp; stok · pesan lewat WhatsApp</span></div></div>';
     html += '<header class="site-head"><div class="wrap head-row">' +
       '<a class="brand" href="./" aria-label="'+escapeHtml(STATE.shopName)+'"><img class="brand-logo" src="logo-utama.png" alt="'+escapeHtml(STATE.shopName)+'"></a>' +
-      '<div class="search">'+ic('search')+'<input type="search" id="search-input" placeholder="Cari barang…" value="'+escapeHtml(searchQuery)+'" aria-label="Cari barang"></div>' +
+      '<div class="search">'+ic('search')+'<input type="search" id="search-input" placeholder="Cari barang…" value="'+escapeHtml(searchQuery)+'" aria-label="Cari barang" enterkeyhint="search" autocomplete="off">'+suggestHtml()+'</div>' +
       '<button class="hd-cart'+(cc?' on':'')+'" id="hd-cart" aria-label="Keranjang">'+ic('cart')+'<span class="hc-txt">'+(cc ? '<b>'+cc+' barang</b><small>'+formatRupiah(cartTotal())+'</small>' : '<small>Keranjang kosong</small>')+'</span></button>' +
     '</div></header>';
     html += '<nav class="mainnav" aria-label="Menu"><div class="wrap">' +
@@ -1628,12 +1693,13 @@
       }
       html += '</section></div>';
       var pickersHtml = html; html = htmlBeforePk;
-      html += sliderHtml();
-      if(ANNS.length){ html += '<button class="ann-bar" data-view="info">'+ic('megaphone')+'<span>'+escapeHtml(ANNS[0].title)+'</span><small>Lihat</small></button>'; }
+      var searching = !!searchQuery.trim();
+      if(!searching) html += sliderHtml();
+      if(!searching && ANNS.length){ html += '<button class="ann-bar" data-view="info">'+ic('megaphone')+'<span>'+escapeHtml(ANNS[0].title)+'</span><small>Lihat</small></button>'; }
 
-      html += statusCard();
+      if(!searching) html += statusCard();
 
-      if(showHome){
+      if(showHome && !searching){
         var hs = highlightStrips(), mid = promoTiles() + pickersHtml;
         html += hs.indexOf('__PROMO__') !== -1 ? hs.replace('__PROMO__', function(){ return mid; }) : (hs + mid);
       } else {
@@ -1745,7 +1811,7 @@
     var searchInput = document.getElementById('search-input');
     if(searchInput){
       searchInput.addEventListener('input', function(){
-        searchQuery = searchInput.value;
+        searchQuery = searchInput.value; suggestOpen = true;
         clearTimeout(missTimer); missTimer = setTimeout(checkMiss, 1500);
         if(view !== 'home'){ view = 'home'; try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){} }
         var pos = searchInput.selectionStart;
@@ -1754,6 +1820,19 @@
         if(el){ el.focus(); try{ el.setSelectionRange(pos, pos); }catch(e){} }
       });
     }
+    if(searchInput){
+      searchInput.addEventListener('keydown', function(e){
+        if(e.key === 'Enter'){ e.preventDefault(); suggestOpen = false; searchInput.blur(); render(); }
+      });
+    }
+    document.querySelectorAll('[data-sugg]').forEach(function(b){
+      b.onclick = function(e){
+        e.preventDefault(); var p = findProduct(b.dataset.sugg); if(!p) return;
+        searchQuery = p.name; suggestOpen = false;
+        if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+        render(); window.scrollTo(0, 0);
+      };
+    });
     document.querySelectorAll('[data-action="fav"]').forEach(function(b){
       b.onclick = function(e){ e.stopPropagation(); toggleFav(b.dataset.id); render(); };
     });
@@ -2098,6 +2177,18 @@
   }
   function handleScan(code, el, totalEl){
     var p = STATE.products.find(function(x){ return x.barcode === code; });
+    var vHit = null;
+    if(!p){
+      STATE.products.some(function(x){ var v = (x.variants || []).find(function(y){ return y.barcode && y.barcode === code; }); if(v){ p = x; vHit = v; return true; } return false; });
+    }
+    if(vHit && p && !p.soldOut){
+      var vk = cartKey(p.id, vHit.name);
+      setQty(vk, (cart[vk] || 0) + 1); render();
+      el.className = 'sc-result ok';
+      el.textContent = itemLabel(p, vHit.name) + ' — ' + formatRupiah(unitPrice(p, vHit.name)) + ' (×' + cart[vk] + ')';
+      if(totalEl) totalEl.textContent = cartCount() + ' barang · ' + formatRupiah(cartTotal());
+      return;
+    }
     if(!p){ el.className = 'sc-result bad'; el.textContent = 'Barang belum terdaftar (' + code + ')'; rpc('log_search_miss', {p_term:'barcode ' + code}).catch(function(){}); return; }
     if(p.soldOut){ el.className = 'sc-result bad'; el.textContent = p.name + ' — stok habis'; return; }
     setQty(p.id, (cart[p.id] || 0) + 1);
@@ -2194,6 +2285,10 @@
   }
   /* ====== MULAI ====== */
   function start(){
+    document.addEventListener('click', function(e){
+      if(suggestOpen && !e.target.closest('.search')){ suggestOpen = false; render(); }
+    });
+    initRotator();
     loadFavs(); initPullRefresh();
     var mh = /^#barang-(\d+)$/.exec(location.hash || '');
     if(mh){ view = 'product'; detailId = mh[1]; loadProductComments(detailId); }
