@@ -45,6 +45,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Pak Wan">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin="">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
@@ -424,6 +425,34 @@
   .brand-logo{ height:34px; width:auto; display:block; }
   @media(min-width:720px){ .brand-logo{ height:40px; } }
   .foot-logo{ height:64px; width:auto; margin-bottom:12px; }
+  /* Lenis */
+  html.lenis, html.lenis body{ height:auto; }
+  .lenis.lenis-smooth{ scroll-behavior:auto !important; }
+  .lenis.lenis-stopped{ overflow:hidden; }
+  /* Kerangka (skeleton) transparan saat memuat / jaringan lambat */
+  @keyframes skShine{ 0%{ transform:translateX(-100%); } 100%{ transform:translateX(100%); } }
+  .sk, .sk-line, .sk-btn, .sk-circle{ position:relative; overflow:hidden; background:rgba(20,83,45,.075); border-radius:8px; }
+  .sk::after, .sk-line::after, .sk-btn::after, .sk-circle::after{ content:''; position:absolute; inset:0; background:linear-gradient(100deg, transparent 20%, rgba(255,255,255,.7) 50%, transparent 80%); animation:skShine 1.4s ease-in-out infinite; }
+  .sk-wrap{ grid-column:1 / -1; }
+  .sk-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  @media(min-width:700px){ .sk-grid{ grid-template-columns:repeat(4,1fr); gap:12px; } }
+  @media(min-width:1000px){ .sk-grid{ grid-template-columns:repeat(5,1fr); gap:14px; } }
+  .sk-card{ border:1px dashed rgba(20,83,45,.2); border-radius:10px; background:rgba(255,255,255,.45); padding:0 0 10px; overflow:hidden; }
+  .sk-card .thumb.sk{ border-radius:0; background:rgba(20,83,45,.07); }
+  .sk-line{ height:11px; margin:10px 10px 0; } .sk-line.w70{ width:70%; margin-left:auto; margin-right:auto; } .sk-line.w40{ width:40%; margin-left:auto; margin-right:auto; }
+  .sk-btn{ height:30px; margin:12px 10px 0; border-radius:999px; }
+  .sk-pd{ display:grid; gap:12px; padding:8px 0 24px; }
+  .sk-pd .sk-img{ aspect-ratio:1/1; max-width:420px; width:100%; margin:0 auto; border-radius:14px; }
+  .sk-pd .sk-line{ margin:0; height:14px; } .sk-pd .sk-line.big{ height:26px; width:60%; }
+  .sk-cm{ display:flex; gap:12px; align-items:flex-start; padding:14px 0; border-bottom:1px solid var(--line); }
+  .sk-circle{ width:38px; height:38px; border-radius:50%; flex:none; }
+  .sk-cm .sk-col{ flex:1; display:grid; gap:8px; } .sk-cm .sk-line{ margin:0; }
+  .slow-note{ text-align:center; font-size:0.84rem; color:#6b5d4a; padding:14px 0 0; }
+  /* foto memudar masuk setelah selesai dimuat (kerangka terlihat selama jaringan lambat) */
+  .thumb:has(img:not(.ld):not(.rot)){ background:rgba(20,83,45,.07); position:relative; overflow:hidden; }
+  .thumb:has(img:not(.ld):not(.rot))::after{ content:''; position:absolute; inset:0; background:linear-gradient(100deg, transparent 20%, rgba(255,255,255,.7) 50%, transparent 80%); animation:skShine 1.4s ease-in-out infinite; pointer-events:none; }
+  .thumb img:not(.rot){ opacity:0; transition:opacity .4s ease; }
+  .thumb img.ld:not(.rot){ opacity:1; }
   .thumb img.rot{ position:absolute; inset:0; opacity:0; transition:opacity .7s ease; }
   .thumb img.rot.on{ opacity:1; }
   .sugg{ position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:30; background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:0 10px 28px rgba(0,0,0,.16); overflow:hidden; }
@@ -626,6 +655,8 @@
   var sortMode = 'kategori';
   var cart = {};        // { productId: qty }
   var bayarState = '';  // uang dibayar (dipakai bersama bar keranjang & kalkulator)
+  var slowNet = false, slowT = null;
+  function armSlow(){ slowNet = false; clearTimeout(slowT); slowT = setTimeout(function(){ if(loadStatus === 'loading' || cmStatus === 'loading'){ slowNet = true; render(); } }, 6000); }
   var loadStatus = 'loading'; // loading | ok | error
   var fromCache = false;
   var view = 'home';      // home | comments | info | services
@@ -1289,7 +1320,7 @@
   }
   function commentsPage(){
     var list = '';
-    if(cmStatus === 'loading' || (cmStatus === 'idle')) list = '<div class="empty">Memuat komentar…</div>';
+    if(cmStatus === 'loading' || (cmStatus === 'idle')) list = skelComments(4) + slowNoteHtml();
     else if(!COMMENTS || !COMMENTS.length) list = '<div class="empty">Belum ada komentar. Jadilah yang pertama.</div>';
     else list = COMMENTS.map(function(c){ return commentItem(c, true); }).join('');
     return '<section class="cm-page"><h2 class="sec-title"><span>Komentar Pelanggan</span></h2>' + cmSummaryHtml() +
@@ -1461,7 +1492,7 @@
     var st = PC[p.id] || {status:'loading', rows:[]};
     var summary = p.ratingCount ? '<div class="cm-sum"><div class="cm-avg"><b>'+p.rating.toFixed(1)+'</b>'+starsHtml(p.rating)+'<small>'+p.ratingCount+' ulasan</small></div></div>' : '';
     var list;
-    if(st.status === 'loading') list = '<div class="empty">Memuat komentar…</div>';
+    if(st.status === 'loading') list = skelComments(2) + slowNoteHtml();
     else if(st.status === 'unsupported') list = '<div class="empty">Komentar per barang belum diaktifkan oleh kios.</div>';
     else if(st.status === 'error') list = '<div class="empty">Komentar belum bisa dimuat. Periksa internet Anda.</div>';
     else if(!st.rows.length) list = '<div class="empty">Belum ada komentar untuk barang ini. Jadilah yang pertama.</div>';
@@ -1477,7 +1508,7 @@
   }
   function productPage(){
     var back = '<button type="button" class="pd-back" data-action="back">'+ic('left')+'Kembali</button>';
-    if(loadStatus === 'loading') return '<section class="pd">'+back+'<div class="empty">Memuat barang…</div></section>';
+    if(loadStatus === 'loading') return '<section class="pd">'+back+'<div class="sk-pd" aria-busy="true"><div class="sk sk-img"></div><div class="sk-line big"></div><div class="sk-line" style="width:35%"></div><div class="sk-line"></div><div class="sk-line" style="width:80%"></div></div>'+slowNoteHtml()+'</section>';
     var p = findProduct(detailId);
     if(!p) return '<section class="pd">'+back+'<div class="empty">Barang tidak ditemukan atau sudah tidak dijual.<br><button class="retry-btn" data-view="home">Ke beranda</button></div></section>';
     var hasVar = (p.variants || []).length > 0, qtyAll = productQty(p.id), favOn = isFav(p.id);
@@ -1568,8 +1599,19 @@
     '</div><div class="foot-copy">© '+new Date().getFullYear()+' '+escapeHtml(STATE.shopName)+' · Prambon, Nganjuk</div></footer>';
   }
 
+  function skelCards(n){
+    var o = '';
+    for(var i = 0; i < n; i++) o += '<div class="sk-card"><div class="thumb sk"></div><div class="sk-line w70"></div><div class="sk-line w40"></div><div class="sk-btn"></div></div>';
+    return o;
+  }
+  function skelComments(n){
+    var o = '';
+    for(var i = 0; i < n; i++) o += '<div class="sk-cm"><div class="sk-circle"></div><div class="sk-col"><div class="sk-line" style="width:40%"></div><div class="sk-line"></div><div class="sk-line" style="width:75%"></div></div></div>';
+    return '<div aria-busy="true" aria-label="Memuat komentar">' + o + '</div>';
+  }
+  function slowNoteHtml(){ return slowNet ? '<div class="slow-note">Jaringan sedang lambat, masih memuat…</div>' : ''; }
   function buildProductList(){
-    if(loadStatus === 'loading') return '<div class="empty">Memuat daftar barang…</div>';
+    if(loadStatus === 'loading') return '<div class="sk-wrap" aria-busy="true" aria-label="Memuat daftar barang"><div class="sk-grid">' + skelCards(9) + '</div>' + slowNoteHtml() + '</div>';
     if(loadStatus === 'error') return '<div class="empty">Daftar barang belum bisa dimuat. Periksa internet Anda. <small>(kode: ' + escapeHtml(loadErr || '-') + ')</small><br><button class="retry-btn" id="btn-retry">Coba lagi</button></div>';
 
     var base = STATE.products.slice();
@@ -1721,12 +1763,14 @@
     }
 
     app.innerHTML = html;
+    document.querySelectorAll('.thumb img').forEach(function(im){ if(im.complete) im.classList.add('ld'); });
     attachHandlers();
     layoutFloating();
 
     document.querySelectorAll('.plist').forEach(function(l){ if(listTop[l.dataset.list]) l.scrollTop = listTop[l.dataset.list]; });
     document.querySelectorAll('.strip').forEach(function(s){ if(stripLeft[s.dataset.strip]) s.scrollLeft = stripLeft[s.dataset.strip]; });
     window.scrollTo(0, sy);
+    fxAfterRender();
   }
 
   function layoutFloating(){
@@ -1807,7 +1851,7 @@
     var hdCart = document.getElementById('hd-cart');
     if(hdCart) hdCart.onclick = openCartSheet;
     var retry = document.getElementById('btn-retry');
-    if(retry) retry.onclick = function(){ loadStatus = 'loading'; render(); loadProductsAll().then(render); };
+    if(retry) retry.onclick = function(){ loadStatus = 'loading'; armSlow(); render(); loadProductsAll().then(function(){ slowNet = false; render(); }); };
     var searchInput = document.getElementById('search-input');
     if(searchInput){
       searchInput.addEventListener('input', function(){
@@ -2283,6 +2327,127 @@
     if(view === 'comments' && cmStatus !== 'loading'){ loadComments().then(render); }
     render(); window.scrollTo(0, 0);
   }
+  /* ====== EFEK GERAK: Lenis + GSAP + Motion (dimuat dari CDN; situs tetap jalan tanpa ketiganya) ====== */
+  var REDUCE = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var FXSRC = {
+    gsap:   ['https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js', 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js'],
+    lenis:  ['https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js', 'https://unpkg.com/lenis@1.1.13/dist/lenis.min.js'],
+    motion: ['https://cdn.jsdelivr.net/npm/motion@11.11.13/dist/motion.js', 'https://unpkg.com/motion@11.11.13/dist/motion.js']
+  };
+  var lenis = null, introPending = true, FX_T0 = Date.now(), seenCards = {}, lastView = null, lastCartN = null, suggWas = false;
+  function loadFx(name, done){
+    var list = FXSRC[name].slice();
+    (function next(){
+      var u = list.shift(); if(!u) return;
+      var el = document.createElement('script'); el.src = u; el.async = true;
+      el.onload = function(){ if(done) done(); };
+      el.onerror = function(){ if(el.parentNode) el.parentNode.removeChild(el); next(); };
+      document.head.appendChild(el);
+    })();
+  }
+  function syncLenis(){
+    if(!lenis) return;
+    try{ if(document.querySelector('.overlay, .scan-view')) lenis.stop(); else lenis.start(); }catch(e){}
+  }
+  function startLenis(){
+    if(lenis || !window.Lenis || REDUCE) return;
+    try{
+      lenis = new Lenis({duration:1.05, easing:function(t){ return Math.min(1, 1.001 - Math.pow(2, -10 * t)); }, smoothWheel:true});
+      if(window.gsap && gsap.ticker){ gsap.ticker.add(function(t){ lenis.raf(t * 1000); }); gsap.ticker.lagSmoothing(0); }
+      else { (function loop(t){ lenis.raf(t); requestAnimationFrame(loop); })(performance.now()); }
+      syncLenis();
+    }catch(e){ lenis = null; }
+  }
+  function fxOverlayIn(n){
+    if(!n || n.nodeType !== 1) return;
+    var isOv = n.classList.contains('overlay'), isScan = n.classList.contains('scan-view');
+    if(!isOv && !isScan) return;
+    n.setAttribute('data-lenis-prevent', '');
+    var sh = n.querySelector('.sheet'); if(sh) sh.setAttribute('data-lenis-prevent', '');
+    syncLenis();
+    var M = window.Motion; if(!M || !M.animate || REDUCE) return;
+    try{
+      if(isOv){ M.animate(n, {opacity:[0, 1]}, {duration:0.2}); if(sh) M.animate(sh, {opacity:[0, 1], y:[34, 0]}, {duration:0.32, ease:'easeOut'}); }
+      else M.animate(n, {opacity:[0, 1]}, {duration:0.25});
+    }catch(e){}
+  }
+  function initFx(){
+    new MutationObserver(function(muts){
+      muts.forEach(function(m){ Array.prototype.forEach.call(m.addedNodes, fxOverlayIn); });
+      syncLenis();
+    }).observe(document.body, {childList:true});
+    if(REDUCE) return;
+    loadFx('gsap', function(){ startLenis(); fxAfterRender(); });
+    loadFx('motion', function(){ fxAfterRender(); });
+    loadFx('lenis', startLenis);
+    // gambar: tampil halus setelah selesai dimuat
+    function imgDone(e){ var t = e.target; if(t && t.tagName === 'IMG') t.classList.add('ld'); }
+    document.addEventListener('load', imgDone, true);
+    document.addEventListener('error', imgDone, true);
+  }
+  function fxShowAll(list){ list.forEach(function(el){ el.style.opacity = ''; el.style.transform = ''; }); }
+  function fxAfterRender(){
+    document.querySelectorAll('.thumb img').forEach(function(im){ if(im.complete) im.classList.add('ld'); });
+    document.querySelectorAll('.plist, .sheet, .overlay, .scan-view').forEach(function(el){ el.setAttribute('data-lenis-prevent', ''); });
+    if(REDUCE) return;
+    var G = window.gsap, M = window.Motion, app = document.getElementById('app');
+    if(!app) return;
+
+    // GSAP: animasi pembuka sekali saat situs pertama kali tampil
+    if(introPending && G){
+      introPending = false;
+      if(Date.now() - FX_T0 < 5000){
+        var kids = Array.prototype.filter.call(app.children, function(c){ return getComputedStyle(c).position !== 'fixed'; }).slice(0, 7);
+        G.from(kids, {y:16, opacity:0, duration:0.55, stagger:0.07, ease:'power2.out', clearProps:'transform,opacity'});
+        var promos = document.querySelectorAll('.promo');
+        if(promos.length) G.from(promos, {y:18, scale:0.94, opacity:0, duration:0.5, stagger:0.06, delay:0.35, ease:'back.out(1.6)', clearProps:'transform,opacity'});
+      }
+    } else if(lastView !== null && lastView !== view && G){
+      // GSAP: pindah halaman (Beranda/Komentar/Info/Layanan/Barang)
+      var pageEl = app.querySelector('.wrap');
+      if(pageEl) G.from(pageEl, {y:14, opacity:0, duration:0.35, ease:'power2.out', clearProps:'transform,opacity'});
+    }
+    lastView = view;
+
+    // Motion: kartu barang muncul halus saat digulir ke layar
+    if(M && M.inView && M.animate){
+      var pend = [];
+      document.querySelectorAll('main.grid .card[data-pid]').forEach(function(c){
+        var id = c.dataset.pid; if(seenCards[id]) return;
+        c.style.opacity = '0'; c.style.transform = 'translateY(16px)'; pend.push(c);
+        var done = false;
+        M.inView(c, function(){
+          if(done) return; done = true; seenCards[id] = 1;
+          var k = pend.indexOf(c); var delay = Math.max(0, k % 6) * 0.045;
+          try{
+            var a = M.animate(c, {opacity:[0, 1], y:[16, 0]}, {duration:0.45, delay:delay, ease:'easeOut'});
+            var fin = a && (a.finished || a); if(fin && fin.then) fin.then(function(){ fxShowAll([c]); });
+          }catch(e){ fxShowAll([c]); }
+        }, {margin:'0px 0px -4% 0px'});
+      });
+      if(pend.length) setTimeout(function(){ // jaring pengaman: kartu yang sudah terlihat tapi masih tersembunyi
+        pend.forEach(function(c){
+          if(!c.isConnected || c.style.opacity !== '0') return;
+          var r = c.getBoundingClientRect();
+          if(r.top < window.innerHeight && r.bottom > 0){ fxShowAll([c]); seenCards[c.dataset.pid] = 1; }
+        });
+      }, 2500);
+    }
+
+    // Motion: tombol keranjang "memantul" saat isinya berubah
+    var n = cartCount();
+    if(lastCartN !== null && n !== lastCartN && n > 0 && M && M.animate){
+      var cb = document.getElementById('hd-cart');
+      try{ if(cb) M.animate(cb, {scale:[1, 1.12, 1]}, {duration:0.35}); }catch(e){}
+    }
+    lastCartN = n;
+
+    // Motion: daftar saran pencarian masuk halus (hanya saat baru muncul)
+    var sg = document.querySelector('.sugg');
+    if(sg && !suggWas && M && M.animate){ try{ M.animate(sg, {opacity:[0, 1], y:[-6, 0]}, {duration:0.18}); }catch(e){} }
+    suggWas = !!sg;
+  }
+
   /* ====== MULAI ====== */
   function start(){
     document.addEventListener('click', function(e){
@@ -2298,6 +2463,7 @@
     window.addEventListener('popstate', routeFromHash);
     document.addEventListener('click', function(e){ var b = e.target.closest && e.target.closest('[data-dl-qris]'); if(b) downloadQris(b); });
     loadCart();
+    initFx(); armSlow();
     render(); // tampilkan info toko dulu, barang menyusul
     Promise.all([loadProductsAll(), checkQris(), loadSlides(), loadServices(), loadInfo()]).then(render);
     document.addEventListener('click', function(e){
